@@ -70,3 +70,13 @@ test('guida: per Windows il primo passo è estrarre lo zip', { skip: !presenti }
   const quick = t.slice(t.indexOf('1. Quick start'), t.indexOf('2. First launch on Mac'));
   assert.ok(/Extract All/.test(quick), 'Quick start: Extract All per Windows');
 });
+
+test('SRT-Check.ps1: FFmpeg dal pacchetto essentials in zip (la build full esiste solo in 7z), con ripiego su GitHub', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  assert.ok(!t.includes('ffmpeg-release-full.zip'), 'il link full.zip dà 404 (provato da un PC Windows vero)');
+  assert.ok(t.includes('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'));
+  assert.ok(t.includes('api.github.com/repos/GyanD/codexffmpeg/releases/latest') && t.includes('essentials_build.zip'), 'ripiego sul mirror ufficiale di gyan su GitHub');
+  assert.ok(/Test-SrtSupport \$candidateFfmpeg/.test(t), 'la build scaricata deve avere SRT prima di installarla');
+  const guida = fs.readFileSync(path.join(SORGENTE, 'guida.html'), 'utf8');
+  assert.ok(!guida.includes('200 MB') && guida.includes('110 MB'), 'dimensione del download aggiornata nella guida');
+});
