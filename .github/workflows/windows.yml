@@ -115,8 +115,12 @@ jobs:
           $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -RedirectStandardError "$env:RUNNER_TEMP\fonte.txt" -ArgumentList '-nostdin -hide_banner -loglevel warning -re -f lavfi -i testsrc2=size=640x360:rate=25 -t 30 -c:v mpeg2video -b:v 4M -minrate 4M -maxrate 4M -bufsize 1M -f mpegts -passphrase abcdefghij -mode listener -listen_timeout 20000000 srt://127.0.0.1:23009'
           Start-Sleep 3
           Write-Host "--- fonte attiva: $(-not $fonte.HasExited)"
-          & $slt -v -s:100 -f -pf:json "-statsout:$env:RUNNER_TEMP\diag.jsonl" -a:yes -t:10 "srt://127.0.0.1:23009?latency=200&passphrase=abcdefghij" "udp://127.0.0.1:23010" 2>&1 | Select-Object -First 40
-          Write-Host "--- codice d'uscita: $LASTEXITCODE"
+          # senza -t: su Windows non e' implementato; si ferma dopo 10 s
+          $p = Start-Process $slt -PassThru -NoNewWindow -RedirectStandardError "$env:RUNNER_TEMP\slt-err.txt" -ArgumentList "-v -s:100 -f -pf:json `"-statsout:$env:RUNNER_TEMP\diag.jsonl`" -a:yes `"srt://127.0.0.1:23009?latency=200&passphrase=abcdefghij`" udp://127.0.0.1:23010"
+          Start-Sleep 10
+          Write-Host "--- srt-live-transmit ancora attivo dopo 10 s: $(-not $p.HasExited)"
+          Stop-Process -Id $p.Id -ErrorAction SilentlyContinue
+          Get-Content "$env:RUNNER_TEMP\slt-err.txt" -ErrorAction SilentlyContinue | Select-Object -First 40
           if (Test-Path "$env:RUNNER_TEMP\diag.jsonl") { Write-Host "--- righe di statistiche: $((Get-Content "$env:RUNNER_TEMP\diag.jsonl").Count)" }
           Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
           Write-Host "--- fonte:"; Get-Content "$env:RUNNER_TEMP\fonte.txt" -ErrorAction SilentlyContinue | Select-Object -First 20

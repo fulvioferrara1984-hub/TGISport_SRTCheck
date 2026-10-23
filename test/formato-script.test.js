@@ -80,3 +80,10 @@ test('SRT-Check.ps1: FFmpeg dal pacchetto essentials in zip (la build full esist
   const guida = fs.readFileSync(path.join(SORGENTE, 'guida.html'), 'utf8');
   assert.ok(!guida.includes('200 MB') && guida.includes('110 MB'), 'dimensione del download aggiornata nella guida');
 });
+
+test('SRT-Check.ps1: niente -t per srt-live-transmit (su Windows non è implementato): la durata la conta lo script', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  const argomenti = t.split('\n').find((r) => r.includes('$psi.Arguments ='));
+  assert.ok(argomenti && !/-t:/.test(argomenti), argomenti);
+  assert.ok(/TotalSeconds -ge \$Seconds\)\s*\{\s*\$reason = 'time'/.test(t), 'allo scadere lo script chiude il test con motivo time');
+});
