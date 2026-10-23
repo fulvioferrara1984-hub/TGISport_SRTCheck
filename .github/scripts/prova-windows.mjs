@@ -32,6 +32,7 @@ if (azione === 'conversione') {
     const rep = report.leggi(testo);
     const a = report.analizza(rep);
     console.log(JSON.stringify({ giudizio: a.giudizio, frasi: a.frasi.map((f) => f.codice), collegatoS: a.misure.collegatoS, bitrate: a.misure.bitrate, motivo: rep.fine && rep.fine.motivo, eventi: rep.eventi.length }));
+    for (const e of rep.eventi) console.log(`  evento ${e.evento}: ${e.dettaglio}`); // già senza passphrase
     if (atteso === 'interrotto') {
       // finestra chiusa di colpo: il report c'e' gia' (senza riga "fine") e si analizza
       esito(rep.fine === null, 'report senza riga "fine"');
