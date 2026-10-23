@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>SRT Check · TGI Sport</title>
+  <link rel="icon" type="image/png" href="app/favicon.png">
+  <link rel="apple-touch-icon" href="app/favicon-180.png">
+  <link rel="stylesheet" href="app/stile.css?v=6">
+</head>
+<body>
+  <header class="testata">
+    <div class="marchio">
+      <img class="marchio-logo" src="Logo/TGI-Sport_black.png" alt="TGI Sport">
+      <span class="marchio-nome">SRT Check</span>
+    </div>
+    <nav class="schede" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" data-vista="check" aria-selected="true">Check</button>
+      <button type="button" role="tab" data-vista="build" aria-selected="false">Build</button>
+      <button type="button" role="tab" data-vista="statistics" aria-selected="false">Statistics</button>
+      <button type="button" role="tab" data-vista="download" aria-selected="false">Download &amp; guide</button>
+    </nav>
+    <span class="spazio"></span>
+    <button type="button" class="esci" id="btn-esci" hidden>Sign out</button>
+  </header>
+
+  <!-- Accesso con la password del team (guida e strumenti sono cifrati) -->
+  <div class="accesso in-attesa" id="accesso">
+    <form class="accesso-scheda" id="accesso-form" autocomplete="on">
+      <img class="accesso-logo" src="Logo/TGI-Sport_black.png" alt="TGI Sport">
+      <h1>SRT Check</h1>
+      <p>Enter the team password to sign in.</p>
+      <label class="campo"><span>Password</span><input type="password" id="accesso-password" autocomplete="current-password" required></label>
+      <label class="spunta"><input type="checkbox" id="accesso-ricorda" checked><span>Remember on this device</span></label>
+      <div class="errore" id="accesso-errore" role="alert" hidden></div>
+      <button type="submit" class="primario" id="accesso-entra">Sign in</button>
+    </form>
+  </div>
+
+  <main>
+    <section class="vista" id="vista-check">
+      <h1>Check an SRT string</h1>
+      <p class="sottotitolo">Paste the <code>srt://</code> string you received: it is checked in this browser only and never sent anywhere.</p>
+      <div id="contenitore-check"></div>
+    </section>
+
+    <section class="vista" id="vista-build" hidden>
+      <h1>Build an SRT string</h1>
+      <p class="sottotitolo">Fill in the details you received (address, port, latency, passphrase…) to get a string that works with the SRT Check tool.</p>
+      <div id="contenitore-build"></div>
+    </section>
+
+    <section class="vista" id="vista-statistics" hidden>
+      <h1>Stream stability</h1>
+      <p class="sottotitolo">Drop the report saved by the stability test of the SRT Check tool. It is read in this browser only and never uploaded.</p>
+      <div id="contenitore-statistics"></div>
+    </section>
+
+    <section class="vista" id="vista-download" hidden>
+      <h1>Download &amp; guide</h1>
+      <p class="sottotitolo">The SRT Check tool receives the stream on your computer with FFmpeg: watch it, or run a stability test.</p>
+      <div id="contenitore-download"></div>
+    </section>
+  </main>
+
+  <div class="avvisi" id="avvisi" aria-live="polite"></div>
+
+  <script src="contenuto/guida.js?v=6"></script>
+  <script src="app/cifratura.js?v=6"></script>
+  <script src="app/archivio.js?v=6"></script>
+  <script src="app/contenuto.js?v=6"></script>
+  <script src="app/accesso.js?v=6"></script>
+  <script src="app/stringa.js?v=6"></script>
+  <script src="app/check.js?v=6"></script>
+  <script src="app/build.js?v=6"></script>
+  <script src="app/report.js?v=6"></script>
+  <script src="app/grafici.js?v=6"></script>
+  <script src="app/statistiche.js?v=6"></script>
+  <script src="app/guida.js?v=6"></script>
+  <script src="app/app.js?v=6"></script>
+</body>
+</html>

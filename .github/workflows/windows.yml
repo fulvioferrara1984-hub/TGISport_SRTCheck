@@ -1,0 +1,135 @@
+# Compila srt-live-transmit.exe dal codice ufficiale SRT e prova lo strumento Windows di SRT Check.
+# Si avvia solo a mano (Actions → Windows → Run workflow, oppure: gh workflow run windows.yml).
+name: Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: srt-live-transmit.exe (SRT v1.5.7)
+    runs-on: windows-2022 # immagine fissata: il generatore CMake qui sotto e' Visual Studio 2022
+    steps:
+      - name: Codice ufficiale SRT
+        uses: actions/checkout@v4
+        with:
+          repository: Haivision/srt
+          ref: v1.5.7
+          path: srt
+
+      - name: Ambiente Visual Studio
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: OpenSSL statico (vcpkg)
+        run: vcpkg install openssl:x64-windows-static
+
+      - name: Compilazione statica
+        shell: pwsh
+        run: |
+          cmake -S srt -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
+            -DENABLE_APPS=ON -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_STDCXX_SYNC=ON -DENABLE_UNITTESTS=OFF `
+            -DOPENSSL_USE_STATIC_LIBS=ON -DOPENSSL_MSVC_STATIC_RT=ON
+          cmake --build build --config Release --target srt-live-transmit
+
+      - name: Controllo (solo DLL di sistema) e artifact
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem build -Recurse -Filter srt-live-transmit.exe | Select-Object -First 1
+          & $exe.FullName -version
+          $dll = (dumpbin /dependents $exe.FullName) -match '\.dll' | ForEach-Object { $_.Trim() }
+          $dll
+          $altre = $dll | Where-Object { $_ -notmatch '^(KERNEL32|USER32|ADVAPI32|WS2_32|CRYPT32|BCRYPT|SHELL32|OLE32|GDI32|IPHLPAPI|api-ms-win-.*)\.dll$' }
+          if ($altre) { throw "Dipendenze non di sistema: $altre" }
+          New-Item -ItemType Directory out | Out-Null
+          Copy-Item $exe.FullName out/
+          Copy-Item srt/LICENSE out/LICENSE-SRT-MPL-2.0.txt
+          $openssl = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/share/openssl/copyright"
+          if (-not (Test-Path $openssl)) { throw "Licenza di OpenSSL non trovata" }
+          Copy-Item $openssl out/LICENSE-OpenSSL.txt
+          (Get-FileHash out/srt-live-transmit.exe -Algorithm SHA256).Hash.ToLower() | Set-Content out/SHA256.txt -NoNewline
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: srt-live-transmit-windows
+          path: out/
+
+  test:
+    name: Prova dello strumento Windows
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: srt-live-transmit-windows
+          path: exe
+
+      - name: Pacchetto Windows (decifrato solo qui, mai caricato come artifact)
+        shell: pwsh # regia in PowerShell 7; lo script si prova con Windows PowerShell 5.1 (powershell -File)
+        env:
+          SRT_CHECK_PASSWORD: ${{ secrets.SRT_CHECK_PASSWORD }}
+        run: |
+          node .github/scripts/estrai-pacchetto.mjs windows "$env:RUNNER_TEMP\Cartella con spazi"
+          if ($LASTEXITCODE) { exit 1 }
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\bin" | Out-Null
+          Copy-Item exe\srt-live-transmit.exe, exe\LICENSE-OpenSSL.txt "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\bin\" -Force
+
+      - name: Conversione della stringa
+        shell: pwsh # regia in PowerShell 7; lo script si prova con Windows PowerShell 5.1 (powershell -File)
+        run: node .github/scripts/prova-windows.mjs conversione "$env:RUNNER_TEMP\Cartella con spazi\SRT Check"
+
+      - name: Primo avvio (scarica FFmpeg da gyan.dev come sul PC di un operatore)
+        shell: pwsh # regia in PowerShell 7; lo script si prova con Windows PowerShell 5.1 (powershell -File)
+        run: |
+          & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1" -Url "srt://127.0.0.1:9?latency=200000" -Action Test -Seconds 5 -NoVideo -ReportDir "$env:RUNNER_TEMP\riscaldamento"
+          if (-not (Test-Path "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffplay.exe")) { throw "FFmpeg non installato" }
+
+      - name: Test di stabilita' in caller
+        shell: pwsh # regia in PowerShell 7; lo script si prova con Windows PowerShell 5.1 (powershell -File)
+        run: |
+          $ff = "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffmpeg.exe"
+          $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -ArgumentList '-nostdin -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=640x360:rate=25 -t 70 -c:v mpeg2video -b:v 4M -minrate 4M -maxrate 4M -bufsize 1M -f mpegts -passphrase abcdefghij -mode listener -listen_timeout 20000000 srt://127.0.0.1:23001'
+          Start-Sleep 3
+          New-Item -ItemType Directory "$env:RUNNER_TEMP\report-caller" | Out-Null
+          & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1" -Url "srt://127.0.0.1:23001?latency=200000&passphrase=abcdefghij" -Action Test -Seconds 30 -NoVideo -ReportDir "$env:RUNNER_TEMP\report-caller"
+          Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
+          node .github/scripts/prova-windows.mjs report "$env:RUNNER_TEMP\report-caller" stable
+
+      - name: Test di stabilita' in listener
+        shell: pwsh # regia in PowerShell 7; lo script si prova con Windows PowerShell 5.1 (powershell -File)
+        run: |
+          $ff = "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffmpeg.exe"
+          New-Item -ItemType Directory "$env:RUNNER_TEMP\report-listener" | Out-Null
+          $script = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1`"", '-Url', '"srt://0.0.0.0:23002?mode=listener&latency=200000"', '-Action', 'Test', '-Seconds', '30', '-NoVideo', '-ReportDir', "`"$env:RUNNER_TEMP\report-listener`"")
+          Start-Sleep 4
+          $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -ArgumentList '-nostdin -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=640x360:rate=25 -t 60 -c:v mpeg2video -b:v 4M -minrate 4M -maxrate 4M -bufsize 1M -f mpegts srt://127.0.0.1:23002'
+          $script.WaitForExit()
+          Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
+          node .github/scripts/prova-windows.mjs report "$env:RUNNER_TEMP\report-listener" stable
+
+      - name: Finestra chiusa di colpo durante il test (report gia' su disco, nessun processo orfano)
+        shell: pwsh
+        run: |
+          $ff = "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffmpeg.exe"
+          $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -ArgumentList '-nostdin -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=640x360:rate=25 -t 90 -c:v mpeg2video -b:v 4M -minrate 4M -maxrate 4M -bufsize 1M -f mpegts -mode listener -listen_timeout 20000000 srt://127.0.0.1:23003'
+          Start-Sleep 3
+          New-Item -ItemType Directory "$env:RUNNER_TEMP\report-chiuso" | Out-Null
+          $script = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1`"", '-Url', '"srt://127.0.0.1:23003?latency=200000"', '-Action', 'Test', '-Seconds', '60', '-NoVideo', '-ReportDir', "`"$env:RUNNER_TEMP\report-chiuso`"")
+          Start-Sleep 15
+          Stop-Process -Id $script.Id -Force
+          Start-Sleep 3
+          $orfani = @(Get-Process srt-live-transmit -ErrorAction SilentlyContinue)
+          Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
+          if ($orfani.Count -gt 0) { throw "srt-live-transmit e' rimasto acceso dopo la chiusura" }
+          node .github/scripts/prova-windows.mjs report "$env:RUNNER_TEMP\report-chiuso" interrotto

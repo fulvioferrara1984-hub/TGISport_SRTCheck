@@ -1,0 +1,63 @@
+[
+  {
+    "nome": "senza-cifratura",
+    "query": ""
+  },
+  {
+    "nome": "piu",
+    "query": "passphrase=abc+defghij",
+    "passphrase": "abc+defghij"
+  },
+  {
+    "nome": "e-commerciale",
+    "query": "passphrase=abcde&fghij",
+    "passphrase": "abcde&fghij"
+  },
+  {
+    "nome": "percento",
+    "query": "passphrase=abc%zzdefghij",
+    "passphrase": "abc%zzdefghij"
+  },
+  {
+    "nome": "cancelletto",
+    "query": "passphrase=abcdefghij#1",
+    "passphrase": "abcdefghij#1"
+  },
+  {
+    "nome": "spazio",
+    "query": "passphrase=abc defghij",
+    "passphrase": "abc defghij"
+  },
+  {
+    "nome": "tutti-insieme",
+    "query": "passphrase=a+b&c%d#e fgh!",
+    "passphrase": "a+b&c%d#e fgh!"
+  },
+  {
+    "nome": "79-caratteri",
+    "query": "passphrase=Ab1%2B%26%25%23%21%20xYAb1%2B%26%25%23%21%20xYAb1%2B%26%25%23%21%20xYAb1%2B%26%25%23%21%20xYAb1%2B%26%25%23%21%20xYAb1%2B%26%25%23%21%20xYAb1%2B%26%25%23%21%20xYAb",
+    "passphrase": "Ab1+&%#! xYAb1+&%#! xYAb1+&%#! xYAb1+&%#! xYAb1+&%#! xYAb1+&%#! xYAb1+&%#! xYAb"
+  },
+  {
+    "nome": "stream-id",
+    "query": "streamid=#!::r=live,m=request&passphrase=abcdefghij",
+    "passphrase": "abcdefghij"
+  },
+  {
+    "nome": "latenza-in-ms",
+    "query": "latency=2000&passphrase=abcdefghij",
+    "passphrase": "abcdefghij"
+  },
+  {
+    "nome": "chiave-256",
+    "query": "passphrase=abcdefghij&pbkeylen=32",
+    "passphrase": "abcdefghij",
+    "pbkeylen": 32
+  },
+  {
+    "nome": "passphrase-diversa",
+    "query": "passphrase=abcdefghij",
+    "passphrase": "abcdefghiX",
+    "atteso": "errore"
+  }
+]

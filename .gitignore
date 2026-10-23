@@ -1,0 +1,13 @@
+# Repository pubblico: si pubblicano solo i file della piattaforma (whitelist).
+# sorgente/ (guida e script in chiaro), strumenti/, docs/ e .superpowers/ restano locali.
+/*
+!/.gitignore
+!/.nojekyll
+!/index.html
+!/app/
+!/Logo/
+!/contenuto/
+!/test/
+!/.github/
+!/README.md
+.DS_Store

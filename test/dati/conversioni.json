@@ -1,0 +1,30 @@
+[
+  [
+    "srt://203.0.113.10:9000?latency=2000000&passphrase=a%2Bb%26c&connect_timeout=3000&listen_timeout=5000000&pkt_size=1316",
+    "srt://203.0.113.10:9000?latency=2000&passphrase=a%2Bb%26c&conntimeo=3000&payloadsize=1316"
+  ],
+  [
+    "srt://0.0.0.0:9000?mode=listener&tsbpddelay=500000",
+    "srt://0.0.0.0:9000?mode=listener&latency=500"
+  ],
+  [
+    "srt://203.0.113.10:9000",
+    "srt://203.0.113.10:9000"
+  ],
+  [
+    "srt://203.0.113.10:9000?timeout=5000000",
+    "srt://203.0.113.10:9000"
+  ],
+  [
+    "srt://[2001:db8::1]:9000?rcvlatency=300000&peerlatency=300000&snddropdelay=1000000",
+    "srt://[2001:db8::1]:9000?rcvlatency=300&peerlatency=300&snddropdelay=1000"
+  ],
+  [
+    "srt://203.0.113.10:9000?payload_size=ts_size&enforced_encryption=1&srt_streamid=%23%21%3A%3Ar%3Dlive&smoother=live",
+    "srt://203.0.113.10:9000?payloadsize=1316&enforcedencryption=1&streamid=%23%21%3A%3Ar%3Dlive&congestion=live"
+  ],
+  [
+    "srt://203.0.113.10:9000?passphrase=a*b?c[d]e",
+    "srt://203.0.113.10:9000?passphrase=a*b?c[d]e"
+  ]
+]
