@@ -31,15 +31,16 @@ function rigaStatistiche(sid, ms, t, cum, campione) {
  * opzioni: durataS, intervalloS, mbit, rtt, rttPicchi (RTT di un campione su dieci), perditaPct, scartatiAl (secondi),
  * cadute [{dopoS, perS}] (nuovo sid dopo la caduta), buchi [{dopoS, perS, conPerdite}] (nessuna riga, stesso sid),
  * zeroDa {dopoS, perS} (righe con zero pacchetti), righeFinoA (secondo dell'ultima riga), latenzaMs, senzaFine, senzaCampioni,
- * senzaDati, eventi (default true)
+ * senzaDati, eventi (default true), modalita ('caller' | 'listener'), erroreEvento (dettaglio di un evento error)
  */
 function creaReport(opzioni = {}) {
   const o = { durataS: 300, intervalloS: 1, mbit: 4, rtt: 30, perditaPct: 0, scartatiAl: [], cadute: [], buchi: [], latenzaMs: 200, eventi: true, ...opzioni };
   const inizio = Date.parse('2026-10-23T12:00:00Z');
   const righe = [{
     formato: 'srt-check-report', versione: 1, sistema: 'mac', inizio: timepoint(inizio), durataPrevista: o.durataS,
-    stream: { host: '203.0.113.10', porta: 9000, modalita: 'caller', latenzaMs: o.latenzaMs, cifrato: true, pbkeylen: null, streamId: false },
+    stream: { host: '203.0.113.10', porta: 9000, modalita: o.modalita || 'caller', latenzaMs: o.latenzaMs, cifrato: true, pbkeylen: null, streamId: false },
   }];
+  if (o.erroreEvento) righe.push({ evento: 'error', ora: timepoint(inizio + 1000), dettaglio: o.erroreEvento });
   const evento = (nome, s) => { if (o.eventi) righe.push({ evento: nome, ora: timepoint(inizio + s * 1000), dettaglio: '' }); };
   if (!o.senzaCampioni) {
     let sid = 1000, inizioConnessione = 0, cum = null, indice = 0;

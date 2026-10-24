@@ -22,6 +22,8 @@
   const ATTESA_INIZIALE_MS = 2000; // primi secondi di ogni connessione esclusi dal bitrate
   const FERMA_MINIMA_MS = 2000;
   const STESSO_EVENTO_MS = 2000;
+  const BITRATE_BASSO_MBIT = 1; // sotto questo bitrate (media degli ultimi 10 s) un buco può essere un'immagine fissa in VBR
+  const FINESTRA_BITRATE_MS = 10000;
   const CONTATORI = { unici: 'packetsUnique', persi: 'packetsLost', scartati: 'packetsDropped', ritrasmessi: 'packetsRetransmitted', tardivi: 'packetsBelated' };
 
   // Ora ISO con frazione di qualsiasi lunghezza e fuso +HHMM, +HH:MM o Z → millisecondi; null se non è un'ora.
@@ -117,7 +119,13 @@
   // Interruzioni e soste: cambio di sid, eventi "disconnected", buchi senza righe di statistiche.
   function cadutePause(rep, intervalloMs) {
     const soglia = Math.max(3000, 3 * intervalloMs);
-    const cadute = [], ferme = [];
+    const cadute = [], ferme = [], pause = [];
+    // bitrate medio prima del buco: con pochi Mb/s un buco senza perdite può essere un'immagine fissa in VBR
+    const bitratePrima = (v, i) => {
+      const finestra = v.slice(0, i + 1).filter((c) => c.ora >= v[i].ora - FINESTRA_BITRATE_MS);
+      return somma(finestra.map((c) => c.mbit)) / finestra.length;
+    };
+    const sosta = (v, i, buco) => (bitratePrima(v, i) < BITRATE_BASSO_MBIT ? pause : ferme).push(buco);
     const { connessioni, eventi } = rep;
     for (let i = 1; i < connessioni.length; i++) {
       const a = connessioni[i - 1].campioni, b = connessioni[i].campioni;
@@ -130,7 +138,7 @@
         if (v[i].ora - v[i - 1].ora <= soglia) continue;
         const buco = { ora: v[i - 1].ora, fine: v[i].ora - intervalloMs };
         if (v[i].persi > 0 || v[i].scartati > 0) cadute.push(buco); // dopo il buco mancano pacchetti: si è interrotta la rete
-        else ferme.push(buco); // collegamento attivo, nessun dato e nessun pacchetto perso: la sorgente non inviava
+        else sosta(v, i - 1, buco); // collegamento attivo, nessun dato e nessun pacchetto perso: la sorgente non inviava
       }
       // righe con zero pacchetti (a collegamento attivo, dopo i primi secondi)
       let da = null;
@@ -151,7 +159,7 @@
     if (ultima.length && fineTest !== null) {
       const ultimaOra = ultima[ultima.length - 1].ora;
       const caduta = eventi.some((e) => e.evento === 'disconnected' && e.ora !== null && e.ora >= ultimaOra - STESSO_EVENTO_MS && e.ora <= fineTest);
-      if (!caduta && fineTest - ultimaOra > soglia + 5000) ferme.push({ ora: ultimaOra, fine: fineTest, coda: true });
+      if (!caduta && fineTest - ultimaOra > soglia + 5000) sosta(ultima, ultima.length - 1, { ora: ultimaOra, fine: fineTest, coda: true });
     }
     for (const e of eventi) {
       if (e.evento !== 'disconnected' || e.ora === null) continue;
@@ -166,7 +174,8 @@
     const forma = (x) => ({ ora: x.ora, durataS: tondo(Math.max(0, x.fine - x.ora) / 1000) });
     cadute.sort((a, b) => a.ora - b.ora);
     ferme.sort((a, b) => a.ora - b.ora);
-    return { cadute: cadute.map(forma), ferme: ferme.map(forma), intervalliCadute: cadute, intervalliFerme: ferme, fineTest };
+    pause.sort((a, b) => a.ora - b.ora);
+    return { cadute: cadute.map(forma), ferme: ferme.map(forma), pause: pause.map(forma), intervalliCadute: cadute, intervalliFerme: ferme.concat(pause), fineTest };
   }
 
   // Aritmetica degli intervalli {ora, fine} in millisecondi.
@@ -202,7 +211,7 @@
     const intervalloMs = mediana(intervalli) || 1000;
     const inizioTest = Math.min(...[leggiOra(rep.intestazione.inizio), tutti.length ? tutti[0].ora - tutti[0].t : null].filter((x) => x !== null));
     const fineTest = rep.fine && rep.fine.ora !== null ? rep.fine.ora : (tutti.length ? tutti[tutti.length - 1].ora : inizioTest);
-    const { cadute, ferme, intervalliCadute, intervalliFerme } = cadutePause(rep, intervalloMs);
+    const { cadute, ferme, pause, intervalliCadute, intervalliFerme } = cadutePause(rep, intervalloMs);
 
     const s = (nome) => somma(tutti.map((c) => c[nome]));
     const unici = s('unici'), persi = s('persi'), scartati = s('scartati'), ritrasmessi = s('ritrasmessi');
@@ -228,20 +237,27 @@
       ritrasmissioniPct: tondo(unici ? ritrasmessi / unici * 100 : 0, 2),
       latenzaUsataMs,
       sorgenteFerma: ferme,
+      pauseDati: pause,
     };
     const latenzaConsigliataMs = rtt.length ? latenzaConsigliata(perditaPct, misure.rtt.p95) : null;
     const serie = perSecondo(tutti);
 
     const frasi = [];
+    const listener = rep.intestazione.stream && rep.intestazione.stream.modalita === 'listener';
+    const erroreRegistrato = rep.eventi.filter((e) => e.evento === 'error' && e.dettaglio).pop();
+    const conMessaggio = (testo) => testo + (erroreRegistrato ? ` The tool recorded this message: “${erroreRegistrato.dettaglio}” (see the troubleshooting table of the guide).` : '');
+    const consiglioCollegamento = listener
+      ? 'Check that the source calls this PC’s address and port, that the firewall allowed SRT Check and that the port is open (UDP) on the router.'
+      : 'Check the address and port, and that the other side is in listener mode and reachable from this network.';
     if (!tutti.length) {
       frasi.push(frase('non-funziona-mai-collegato', 'error', 'Never connected',
-        'The tool never managed to connect to the stream, so there is nothing to measure.',
-        'Check the string in the Check tab, then use “Watch” in the tool with the detailed log and look up the message in the troubleshooting table of the guide.'));
+        conMessaggio('The tool never managed to connect to the stream, so there is nothing to measure.'),
+        consiglioCollegamento + ' The Check tab helps with the string itself.'));
       return { giudizio: 'not-working', misure, latenzaConsigliataMs, frasi, serie };
     }
     if (!unici) {
       frasi.push(frase('non-funziona-senza-dati', 'error', 'Connected, but no video',
-        'The connection worked, but no video data arrived during the whole test.',
+        conMessaggio('The connection worked, but no video data arrived during the whole test.'),
         'The source is connected but not sending: check that the encoder is actually streaming to this destination.'));
       return { giudizio: 'not-working', misure, latenzaConsigliataMs, frasi, serie };
     }
@@ -284,6 +300,11 @@
       frasi.push(frase('sorgente-ferma', 'error', 'The source stopped sending',
         `No video arrived at ${elencoOrari(ferme)} while the connection stayed up and no packets were lost: the source stopped sending, not the network.`,
         'Check the encoder or the source equipment at those times.'));
+    }
+    if (pause.length) {
+      frasi.push(frase('pausa-dati', 'warning', 'No data for a while',
+        `No data arrived at ${elencoOrari(pause)}: the source stopped sending, or it sent a still image at a very low variable bitrate.`,
+        'If the picture was moving at those times, check the source.'));
     }
     if (misure.rtt.p95 > 2 * misure.rtt.mediana && misure.rtt.p95 - misure.rtt.mediana >= 10) {
       frasi.push(frase('rtt-irregolare', 'warning', 'Irregular network path',

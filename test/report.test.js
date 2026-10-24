@@ -191,3 +191,24 @@ test('perdita oltre il 40%: collegamento inutilizzabile, nessun consiglio fuorvi
   assert.ok(f && f.livello === 'error');
   assert.ok(!frase(a, 'persi-definitivi').azione.includes('already matches'), frase(a, 'persi-definitivi').azione);
 });
+
+test('not working con errore registrato: la frase cita il messaggio', () => {
+  const f = frase(analizza({ senzaCampioni: true, erroreEvento: 'processConnectResponse: rejecting per reception of a rejection HS response: ERROR:BADSECRET' }), 'non-funziona-mai-collegato');
+  assert.ok(f.testo.includes('BADSECRET'), f.testo);
+});
+
+test('not working: consiglio diverso per listener e caller', () => {
+  const listener = frase(analizza({ senzaCampioni: true, modalita: 'listener' }), 'non-funziona-mai-collegato');
+  assert.ok(/firewall/i.test(listener.azione), listener.azione);
+  const caller = frase(analizza({ senzaCampioni: true }), 'non-funziona-mai-collegato');
+  assert.ok(/listener/i.test(caller.azione) && !/firewall/i.test(caller.azione), caller.azione);
+});
+
+test('VBR a bitrate basso: il buco senza perdite è una pausa, non una sorgente ferma', () => {
+  const a = analizza({ mbit: 0.5, intervalloS: 2.5, buchi: [{ dopoS: 150, perS: 12 }] });
+  assert.equal(a.giudizio, 'stable');
+  assert.ok(codici(a).includes('pausa-dati'), codici(a).join());
+  assert.equal(a.misure.sorgenteFerma.length, 0);
+  assert.equal(a.misure.pauseDati.length, 1);
+  assert.equal(frase(a, 'pausa-dati').livello, 'warning');
+});
