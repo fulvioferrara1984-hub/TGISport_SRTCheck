@@ -243,12 +243,13 @@
     const serie = perSecondo(tutti);
 
     const frasi = [];
-    const listener = rep.intestazione.stream && rep.intestazione.stream.modalita === 'listener';
+    const modalita = (rep.intestazione.stream && rep.intestazione.stream.modalita) || 'caller';
     const erroreRegistrato = rep.eventi.filter((e) => e.evento === 'error' && e.dettaglio).pop();
     const conMessaggio = (testo) => testo + (erroreRegistrato ? ` The tool recorded this message: “${erroreRegistrato.dettaglio}” (see the troubleshooting table of the guide).` : '');
-    const consiglioCollegamento = listener
-      ? 'Check that the source calls this PC’s address and port, that the firewall allowed SRT Check and that the port is open (UDP) on the router.'
-      : 'Check the address and port, and that the other side is in listener mode and reachable from this network.';
+    const consiglioCollegamento = {
+      listener: 'Check that the source calls this PC’s address and port, that the firewall allowed SRT Check and that the port is open (UDP) on the router.',
+      rendezvous: 'Check the address and port, and that the other side is also in rendezvous mode with this PC’s address.',
+    }[modalita] || 'Check the address and port, and that the other side is in listener mode and reachable from this network.';
     if (!tutti.length) {
       frasi.push(frase('non-funziona-mai-collegato', 'error', 'Never connected',
         conMessaggio('The tool never managed to connect to the stream, so there is nothing to measure.'),

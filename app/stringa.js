@@ -56,6 +56,8 @@
   // Parametri il cui valore è testo libero: dentro si conservano gli spazi.
   const LIBERI = ['passphrase', 'streamid', 'srt_streamid', 'smoother'];
   const ORDINE = ['mode', 'latency', 'passphrase', 'pbkeylen', 'streamid'];
+  // nomi diversi per la stessa opzione di FFmpeg
+  const STESSA_OPZIONE = { tsbpddelay: 'latency', payload_size: 'pkt_size', srt_streamid: 'streamid' };
   const PBKEYLEN = [0, 16, 24, 32];
 
   // caratteri di formato invisibili (categoria Unicode Cf): spazi a larghezza zero, trattino morbido, segni di direzione
@@ -155,7 +157,7 @@
 
   function valida(nome, valore, errori) {
     const def = PARAMETRI[nome];
-    if (['latency', 'rcvlatency', 'peerlatency'].includes(nome) && /^-\d+$/.test(valore)) {
+    if (['latency', 'rcvlatency', 'peerlatency', 'tsbpddelay'].includes(nome) && /^-\d+$/.test(valore)) {
       errori.push(messaggio('valore-non-valido', `\`${nome}\` cannot be negative.`, nome));
     } else if (def.tipo === 'int' && !/^-?\d+$/.test(valore) && !(def.costanti || []).includes(valore)) {
       errori.push(messaggio('valore-non-valido', `\`${nome}\` needs a whole number, not “${valore}”.`, nome));
@@ -206,7 +208,23 @@
       }
       parametri.push({ nome, grezzo: pezzo.slice(uguale + 1) });
     }
-    for (const p of parametri) {
+    // parametro ripetuto, anche sotto un altro nome della stessa opzione: FFmpeg applica i valori in ordine e vale
+    // l'ultimo; la stringa pronta tiene solo quello e avvisi e controlli riguardano solo i valori che restano
+    const chiave = (nome) => STESSA_OPZIONE[nome] || nome;
+    const ultimo = new Map();
+    parametri.forEach((p, i) => ultimo.set(chiave(p.nome), i));
+    const avvisati = new Set();
+    parametri.forEach((p, i) => {
+      const k = chiave(p.nome);
+      if (ultimo.get(k) === i || avvisati.has(k)) return;
+      avvisati.add(k);
+      const tenuto = parametri[ultimo.get(k)].nome;
+      avvisi.push(messaggio('parametro-doppio', tenuto === p.nome
+        ? `\`${p.nome}\` appears more than once: FFmpeg uses the last value, so the ready string keeps only that one.`
+        : `\`${p.nome}\` and \`${tenuto}\` set the same thing: FFmpeg uses the last one (\`${tenuto}\`), so the ready string keeps only that one.`, tenuto));
+    });
+    const tenuti = parametri.filter((p, i) => ultimo.get(chiave(p.nome)) === i);
+    for (const p of tenuti) {
       const grezzoIntero = p.grezzo;
       p.grezzo = LIBERI.includes(p.nome) ? grezzoIntero.trim() : grezzoIntero.replace(/\s+/g, '');
       if (p.grezzo !== grezzoIntero) spazi = true;
@@ -227,18 +245,12 @@
       p.valore = decodifica(p.grezzo, esito);
       if (esito.rotta && LIBERI.includes(p.nome)) {
         p.rotta = true;
-        avvisi.push(messaggio('codifica-non-valida', `The ${etichetta} contains %-codes that are not valid text: the ready string keeps them exactly as written. Check them with whoever sent the string.`, p.nome));
+        avvisi.push(messaggio('codifica-non-valida', `The ${etichetta} contains %-codes that are not valid text: the ready string keeps those codes exactly as written. Check them with whoever sent the string.`, p.nome));
       }
       valida(p.nome, p.valore, errori);
     }
     if (maiuscole) note.push(messaggio('nome-minuscolo', 'Wrote parameter names in lower case, as FFmpeg expects.'));
-    // parametro ripetuto: FFmpeg applica i valori in ordine, quindi vale l'ultimo
-    const ultimo = new Map();
-    parametri.forEach((p, i) => ultimo.set(p.nome, i));
-    for (const nome of new Set(parametri.filter((p, i) => ultimo.get(p.nome) !== i).map((p) => p.nome))) {
-      avvisi.push(messaggio('parametro-doppio', `\`${nome}\` appears more than once: FFmpeg uses the last value, so the ready string keeps only that one.`, nome));
-    }
-    return { parametri: parametri.filter((p, i) => ultimo.get(p.nome) === i), spazi };
+    return { parametri: tenuti, spazi };
   }
 
   // FFmpeg legge le latenze in microsecondi: un valore sotto 10000 (10 ms) è quasi sempre scritto in millisecondi.
@@ -263,6 +275,7 @@
     const m = /[.,;"'\u201D\u2019)\]>]+$/.exec(p.valore);
     if (!m || m.index === 0) return;
     p.valore = p.valore.slice(0, m.index);
+    if (p.rotta && p.grezzo.endsWith(m[0])) p.grezzo = p.grezzo.slice(0, -m[0].length);
     const etichetta = etichettaDi(p.nome);
     const a = messaggio('fine-sospetta', `The ${etichetta} ended with “${m[0]}”, which is usually punctuation copied together with the string: it was removed. If it is really part of the ${etichetta}, keep the original value.`, p.nome);
     a.annullabile = true;
@@ -280,6 +293,11 @@
     if (parametri.some((p) => p.nome === 'pbkeylen') && !riepilogo.cifrato) avvisi.push(messaggio('pbkeylen-senza-passphrase', 'pbkeylen has no effect without a passphrase.', 'pbkeylen'));
     if (parametri.some((p) => p.nome === 'transtype' && p.valore === 'file')) avvisi.push(messaggio('transtype-file', 'transtype=file is meant for file transfers, not live video.', 'transtype'));
     if (riepilogo.modalita === 'rendezvous') avvisi.push(messaggio('rendezvous', 'Rendezvous mode is rare: both sides must use it, each with the other one\'s address.', 'mode'));
+  }
+
+  // Per i valori con %-codici non validi: i %XX restano come sono scritti, il resto si codifica come sempre.
+  function codificaGrezzo(g) {
+    return g.replace(/%[0-9a-fA-F]{2}|[^A-Za-z0-9\-._~]/gu, (m) => (m.length === 3 && m[0] === '%' ? m : codificaValore(m)));
   }
 
   // Percent-encoding di tutto tranne A-Z a-z 0-9 - . _ ~ (FFmpeg e srt-live-transmit decodificano %XX).
@@ -305,7 +323,8 @@
       ...ORDINE.map((n) => parametri.find((p) => p.nome === n)).filter(Boolean),
       ...parametri.filter((p) => !ORDINE.includes(p.nome)),
     ];
-    const query = ordinati.map((p) => `${p.nome}=${LIBERI.includes(p.nome) && !p.rotta ? codificaValore(p.valore) : p.grezzo}`).join('&');
+    const testo = (p) => (!LIBERI.includes(p.nome) ? p.grezzo : p.rotta ? codificaGrezzo(p.grezzo) : codificaValore(p.valore));
+    const query = ordinati.map((p) => `${p.nome}=${testo(p)}`).join('&');
     return `srt://${h}:${porta}${query ? '?' + query : ''}`;
   }
 

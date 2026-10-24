@@ -212,3 +212,8 @@ test('VBR a bitrate basso: il buco senza perdite è una pausa, non una sorgente 
   assert.equal(a.misure.pauseDati.length, 1);
   assert.equal(frase(a, 'pausa-dati').livello, 'warning');
 });
+
+test('not working in rendezvous: il consiglio parla di rendezvous, non di listener', () => {
+  const f = frase(analizza({ senzaCampioni: true, modalita: 'rendezvous' }), 'non-funziona-mai-collegato');
+  assert.ok(/rendezvous/i.test(f.azione) && !/listener mode/i.test(f.azione), f.azione);
+});

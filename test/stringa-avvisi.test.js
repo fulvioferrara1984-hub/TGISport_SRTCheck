@@ -148,3 +148,30 @@ test('smoother: i testi dicono "smoother", non "stream ID"', () => {
   const a = stringa.analizza(BASE + 'smoother=live+x').avvisi.find((m) => m.codice === 'carattere-codificato');
   assert.ok(a && a.testo.includes('smoother') && !a.testo.includes('stream ID'), a && a.testo);
 });
+
+test('%-codici non validi: restano intatti, ma & + # spazi vengono codificati e il punto finale tolto', () => {
+  const unita = stringa.analizza(BASE + 'passphrase=abc%E2%82de&fghij');
+  assert.ok(unita.pronta.includes('passphrase=abc%E2%82de%26fghij'), unita.pronta);
+  const punto = stringa.analizza(BASE + 'passphrase=abc%E2%82defghij.');
+  assert.ok(punto.pronta.endsWith('passphrase=abc%E2%82defghij'), punto.pronta);
+  const vari = stringa.analizza(BASE + 'passphrase=abc%E2%82 defghij+x#1');
+  assert.ok(vari.pronta.includes('passphrase=abc%E2%82%20defghij%2Bx%231'), vari.pronta);
+  for (const r of [unita, punto, vari]) assert.equal(stringa.analizza(r.pronta).pronta, r.pronta);
+});
+
+test('nomi diversi per la stessa cosa: avviso e si tiene l\'ultimo', () => {
+  const lat = stringa.analizza(BASE + 'latency=200000&tsbpddelay=500000');
+  assert.ok(codici(lat.avvisi).includes('parametro-doppio'));
+  assert.ok(lat.pronta.includes('tsbpddelay=500000') && !lat.pronta.includes('latency=200000'), lat.pronta);
+  assert.equal(lat.riepilogo.latenzaMs, 500);
+  const pkt = stringa.analizza(BASE + 'pkt_size=1316&payload_size=1456');
+  assert.ok(codici(pkt.avvisi).includes('parametro-doppio') && pkt.pronta.includes('payload_size=1456') && !pkt.pronta.includes('pkt_size'), pkt.pronta);
+  const sid = stringa.analizza(BASE + 'streamid=uno&srt_streamid=due');
+  assert.ok(codici(sid.avvisi).includes('parametro-doppio') && sid.pronta.includes('srt_streamid=due') && !sid.pronta.includes('streamid=uno'), sid.pronta);
+});
+
+test('avvisi solo per i valori che restano nella stringa pronta', () => {
+  const r = stringa.analizza(BASE + 'passphrase=abc+defghij&passphrase=klmnopqrst');
+  assert.ok(codici(r.avvisi).includes('parametro-doppio'));
+  assert.ok(!codici(r.avvisi).includes('carattere-codificato'), codici(r.avvisi).join());
+});

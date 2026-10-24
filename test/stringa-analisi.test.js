@@ -219,3 +219,7 @@ test('latenza negativa: errore', () => {
     assert.ok(codici(stringa.analizza(`srt://203.0.113.10:9000?${nome}=-5000`).errori).includes('valore-non-valido'), nome);
   }
 });
+
+test('tsbpddelay negativo: errore', () => {
+  assert.ok(codici(stringa.analizza('srt://203.0.113.10:9000?tsbpddelay=-5000').errori).includes('valore-non-valido'));
+});
