@@ -21,7 +21,7 @@ jobs:
           path: srt
 
       - name: Ambiente Visual Studio
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
 
       - name: OpenSSL statico (vcpkg)
         run: vcpkg install openssl:x64-windows-static
@@ -153,3 +153,27 @@ jobs:
           Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
           if ($orfani.Count -gt 0) { throw "srt-live-transmit e' rimasto acceso dopo la chiusura" }
           node .github/scripts/prova-windows.mjs report "$env:RUNNER_TEMP\report-chiuso" interrotto
+
+      - name: Registrazione in caller (Watch and record senza video)
+        shell: pwsh
+        run: |
+          $ff = "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffmpeg.exe"
+          $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -ArgumentList '-nostdin -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=1280x720:rate=25 -f lavfi -i sine=f=440 -f lavfi -i sine=f=880 -t 60 -map 0 -map 1 -map 2 -c:v libx264 -preset veryfast -b:v 4M -g 50 -c:a aac -f mpegts -mode listener -listen_timeout 20000000 srt://127.0.0.1:23004'
+          Start-Sleep 3
+          New-Item -ItemType Directory "$env:RUNNER_TEMP\registrazione" | Out-Null
+          & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1" -Url "srt://127.0.0.1:23004?latency=200000" -Action Record -Seconds 15 -NoVideo -ReportDir "$env:RUNNER_TEMP\registrazione"
+          Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
+          node .github/scripts/prova-windows.mjs registrazione "$env:RUNNER_TEMP\registrazione" 15 h264,aac,aac "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffprobe.exe"
+
+      - name: Test di stabilita' con registrazione
+        shell: pwsh
+        run: |
+          $ff = "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffmpeg.exe"
+          $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -ArgumentList '-nostdin -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=1280x720:rate=25 -f lavfi -i sine=f=440 -f lavfi -i sine=f=880 -t 60 -map 0 -map 1 -map 2 -c:v libx264 -preset veryfast -b:v 4M -g 50 -c:a aac -f mpegts -mode listener -listen_timeout 20000000 srt://127.0.0.1:23005'
+          Start-Sleep 3
+          New-Item -ItemType Directory "$env:RUNNER_TEMP\test-registrato" | Out-Null
+          & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1" -Url "srt://127.0.0.1:23005?latency=200000" -Action Test -Record -Seconds 20 -NoVideo -ReportDir "$env:RUNNER_TEMP\test-registrato"
+          Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
+          node .github/scripts/prova-windows.mjs report "$env:RUNNER_TEMP\test-registrato" stable
+          if ($LASTEXITCODE) { exit 1 }
+          node .github/scripts/prova-windows.mjs registrazione "$env:RUNNER_TEMP\test-registrato" 20 h264,aac,aac "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffprobe.exe"

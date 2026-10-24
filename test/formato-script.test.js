@@ -87,3 +87,23 @@ test('SRT-Check.ps1: niente -t per srt-live-transmit (su Windows non è implemen
   assert.ok(argomenti && !/-t:/.test(argomenti), argomenti);
   assert.ok(/TotalSeconds -ge \$Seconds\)\s*\{\s*\$reason = 'time'/.test(t), 'allo scadere lo script chiude il test con motivo time');
 });
+
+test('finestra 960×540 e registrazione con ffplay che segue il file, nei due script', { skip: !presenti }, () => {
+  for (const f of [MAC, PS1]) {
+    const t = fs.readFileSync(f, 'utf8');
+    assert.ok(t.includes('-x 960 -y 540') || t.includes("'-x', '960', '-y', '540'"), `${path.basename(f)}: finestra 960×540`);
+    assert.ok(t.includes('-follow') && t.includes('Watch and record'), `${path.basename(f)}: registrazione`);
+    assert.ok(t.includes('SRT-recording-') && t.includes('Recording saved:'), `${path.basename(f)}: file e messaggio`);
+  }
+});
+
+test('guida: Watch and record, file della registrazione, attesa di 5 secondi', { skip: !presenti }, () => {
+  const t = fs.readFileSync(path.join(SORGENTE, 'guida.html'), 'utf8');
+  assert.ok(t.includes('Watch and record') && t.includes('SRT-recording-') && t.includes('about 5 seconds'));
+});
+
+test('workflow: azione esterna fissata a uno SHA', () => {
+  const t = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'windows.yml'), 'utf8');
+  assert.ok(!t.includes('ilammy/msvc-dev-cmd@v1'));
+  assert.ok(t.includes('ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756'));
+});

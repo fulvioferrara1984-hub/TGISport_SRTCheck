@@ -1,7 +1,8 @@
 // Prove dello strumento Windows su GitHub Actions (Windows PowerShell 5.1).
 // Uso: node .github/scripts/prova-windows.mjs conversione <cartella "SRT Check">
 //      node .github/scripts/prova-windows.mjs report <cartella dei report> <giudizio atteso>
-import { readFileSync, readdirSync } from 'node:fs';
+//      node .github/scripts/prova-windows.mjs registrazione <cartella> <secondi> <codec,codec,...> <ffprobe.exe>
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,8 +45,29 @@ if (azione === 'conversione') {
     esito(rep.eventi.length > 0 && rep.eventi.every((e) => e.ora !== null), 'eventi presenti, tutti con l\'ora');
     esito(!/passphrase=(?!\*\*\*)/.test(testo), 'nessuna passphrase nel report');
   }
+} else if (azione === 'registrazione') {
+  // registrazione: un solo SRT-recording-*.ts, stessi codec della sorgente, pacchetti TS interi, durata giusta (± 2 s)
+  const [, , secondi, codecAttesi, ffprobe] = process.argv.slice(2);
+  const file = readdirSync(cartella).filter((f) => f.startsWith('SRT-recording-') && f.endsWith('.ts'));
+  esito(file.length === 1, `una registrazione in ${cartella} (${file.length})`);
+  if (file.length === 1) {
+    const percorso = join(cartella, file[0]);
+    const sonda = (argomenti) => spawnSync(ffprobe, ['-v', 'error', ...argomenti, '-of', 'csv=p=0', percorso], { encoding: 'utf8' }).stdout.trim();
+    const visti = new Map();
+    for (const riga of sonda(['-show_entries', 'stream=index,codec_name']).split(/\r?\n/)) {
+      const [indice, codec] = riga.split(',');
+      if (codec) visti.set(Number(indice), codec);
+    }
+    const codec = [...visti.entries()].sort((a, b) => a[0] - b[0]).map((x) => x[1]).join(',');
+    const durata = Number(sonda(['-show_entries', 'format=duration']));
+    const byte = statSync(percorso).size;
+    console.log(JSON.stringify({ file: file[0], codec, durata, byte }));
+    esito(codec === codecAttesi, `codec ${codec} (attesi ${codecAttesi})`);
+    esito(byte > 0 && byte % 188 === 0, `pacchetti TS interi (${byte} byte)`);
+    esito(Math.abs(durata - Number(secondi)) <= 2, `durata ${durata} s (attesa ${secondi} ± 2)`);
+  }
 } else {
-  console.error('Uso: prova-windows.mjs conversione <cartella> | report <cartella> <giudizio>');
+  console.error('Uso: prova-windows.mjs conversione <cartella> | report <cartella> <giudizio> | registrazione <cartella> <secondi> <codec> <ffprobe>');
   process.exit(2);
 }
 process.exit(falliti ? 1 : 0);
