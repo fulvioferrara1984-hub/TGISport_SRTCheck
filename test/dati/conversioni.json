@@ -26,5 +26,17 @@
   [
     "srt://203.0.113.10:9000?passphrase=a*b?c[d]e",
     "srt://203.0.113.10:9000?passphrase=a*b?c[d]e"
+  ],
+  [
+    "srt://203.0.113.10:9000?ffs=25600&tsbpd=1&send_buffer_size=1000000&recv_buffer_size=1000000&linger=0",
+    "srt://203.0.113.10:9000?fc=25600&tsbpdmode=1&linger=0"
+  ],
+  [
+    "srt://203.0.113.10:9000?latency=0200000",
+    "srt://203.0.113.10:9000?latency=200"
+  ],
+  [
+    "srt://203.0.113.10:9000?latency=080000&rcvlatency=0900000",
+    "srt://203.0.113.10:9000?latency=80&rcvlatency=900"
   ]
 ]

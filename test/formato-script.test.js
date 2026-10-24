@@ -14,7 +14,7 @@ const presenti = [PS1, BAT, MAC].every((f) => fs.existsSync(f));
 // Nomi della conversione FFmpeg → srt-live-transmit che devono comparire in entrambi gli script.
 const CONVERSIONE = ['latency', 'rcvlatency', 'peerlatency', 'snddropdelay', 'tsbpddelay', 'connect_timeout', 'conntimeo',
   'pkt_size', 'payload_size', 'payloadsize', 'ts_size', '1316', 'max_size', '1456', 'enforced_encryption', 'enforcedencryption',
-  'srt_streamid', 'smoother', 'congestion', 'timeout', 'listen_timeout'];
+  'srt_streamid', 'smoother', 'congestion', 'timeout', 'listen_timeout', 'ffs', 'fc', 'tsbpd', 'tsbpdmode', 'send_buffer_size', 'recv_buffer_size'];
 
 test('SRT-Check.ps1: solo caratteri ASCII', { skip: !presenti }, () => {
   const b = fs.readFileSync(PS1);
