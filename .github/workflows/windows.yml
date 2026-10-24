@@ -220,6 +220,8 @@ jobs:
           if ($file.Count -ne 1) { throw "attesa una registrazione nella cartella utente, trovate $($file.Count)" }
           if (-not $uscita.Contains('cannot be saved in')) { throw "manca l'avviso sulla cartella non scrivibile" }
           if (-not $uscita.Contains('Recording saved: ' + $file[0].FullName)) { throw "il messaggio non indica il percorso vero" }
+          # il divieto di scrittura (W) impedisce anche di elencare la cartella: si toglie prima di guardarci dentro
+          icacls $bloccata /remove:d "$env:USERNAME" | Out-Null
           if (@(Get-ChildItem $bloccata -Force).Count -gt 0) { throw "file lasciati nella cartella non scrivibile" }
           node .github/scripts/prova-windows.mjs registrazione-leggibile "$env:USERPROFILE" h264,aac,aac "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffprobe.exe"
           if ($LASTEXITCODE) { exit 1 }
