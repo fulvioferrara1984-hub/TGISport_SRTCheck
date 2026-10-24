@@ -85,6 +85,14 @@ jobs:
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\bin" | Out-Null
           Copy-Item exe\srt-live-transmit.exe, exe\LICENSE-OpenSSL.txt "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\bin\" -Force
 
+      - name: Sintassi dello script con Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $errori = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1", [ref]$null, [ref]$errori)
+          if ($errori) { $errori | ForEach-Object { Write-Host $_ }; exit 1 }
+          Write-Host "Nessun errore di sintassi"
+
       - name: Conversione della stringa
         shell: pwsh # regia in PowerShell 7; lo script si prova con Windows PowerShell 5.1 (powershell -File)
         run: node .github/scripts/prova-windows.mjs conversione "$env:RUNNER_TEMP\Cartella con spazi\SRT Check"
@@ -177,3 +185,20 @@ jobs:
           node .github/scripts/prova-windows.mjs report "$env:RUNNER_TEMP\test-registrato" stable
           if ($LASTEXITCODE) { exit 1 }
           node .github/scripts/prova-windows.mjs registrazione "$env:RUNNER_TEMP\test-registrato" 20 h264,aac,aac "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffprobe.exe"
+
+
+      - name: Finestra chiusa di colpo durante una registrazione (file leggibile, nessun processo orfano)
+        shell: pwsh
+        run: |
+          $ff = "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffmpeg.exe"
+          $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -ArgumentList '-nostdin -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=1280x720:rate=25 -f lavfi -i sine=f=440 -f lavfi -i sine=f=880 -t 90 -map 0 -map 1 -map 2 -c:v libx264 -preset veryfast -b:v 4M -g 50 -c:a aac -f mpegts -mode listener -listen_timeout 20000000 srt://127.0.0.1:23006'
+          Start-Sleep 3
+          New-Item -ItemType Directory "$env:RUNNER_TEMP\registrazione-chiusa" | Out-Null
+          $script = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1`"", '-Url', '"srt://127.0.0.1:23006?latency=200000"', '-Action', 'Record', '-Seconds', '60', '-NoVideo', '-ReportDir', "`"$env:RUNNER_TEMP\registrazione-chiusa`"")
+          Start-Sleep 12
+          Stop-Process -Id $script.Id -Force
+          Start-Sleep 3
+          $orfani = @(Get-Process srt-live-transmit -ErrorAction SilentlyContinue)
+          Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
+          if ($orfani.Count -gt 0) { throw "srt-live-transmit e' rimasto acceso dopo la chiusura" }
+          node .github/scripts/prova-windows.mjs registrazione-leggibile "$env:RUNNER_TEMP\registrazione-chiusa" h264,aac,aac "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffprobe.exe"

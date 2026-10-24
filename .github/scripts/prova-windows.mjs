@@ -66,6 +66,21 @@ if (azione === 'conversione') {
     esito(byte > 0 && byte % 188 === 0, `pacchetti TS interi (${byte} byte)`);
     esito(Math.abs(durata - Number(secondi)) <= 2, `durata ${durata} s (attesa ${secondi} ± 2)`);
   }
+} else if (azione === 'registrazione-leggibile') {
+  // finestra chiusa di colpo: il file c'e', non e' vuoto e ffprobe lo legge con gli stessi codec
+  const [, , codecAttesi, ffprobe] = process.argv.slice(2);
+  const file = readdirSync(cartella).filter((f) => f.startsWith('SRT-recording-') && f.endsWith('.ts'));
+  esito(file.length === 1, `una registrazione in ${cartella} (${file.length})`);
+  if (file.length === 1) {
+    const percorso = join(cartella, file[0]);
+    const r = spawnSync(ffprobe, ['-v', 'error', '-show_entries', 'stream=index,codec_name', '-of', 'csv=p=0', percorso], { encoding: 'utf8' });
+    const visti = new Map();
+    for (const riga of r.stdout.trim().split(/\r?\n/)) { const [i, c] = riga.split(','); if (c) visti.set(Number(i), c); }
+    const codec = [...visti.entries()].sort((a, b) => a[0] - b[0]).map((x) => x[1]).join(',');
+    const byte = statSync(percorso).size;
+    console.log(JSON.stringify({ file: file[0], codec, byte }));
+    esito(byte > 0 && codec === codecAttesi, `leggibile: ${codec}, ${byte} byte`);
+  }
 } else {
   console.error('Uso: prova-windows.mjs conversione <cartella> | report <cartella> <giudizio> | registrazione <cartella> <secondi> <codec> <ffprobe>');
   process.exit(2);

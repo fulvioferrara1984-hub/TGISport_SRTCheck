@@ -107,3 +107,24 @@ test('workflow: azione esterna fissata a uno SHA', () => {
   assert.ok(!t.includes('ilammy/msvc-dev-cmd@v1'));
   assert.ok(t.includes('ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756'));
 });
+
+test('SRT-Check.ps1: niente "$variabile:" nelle stringhe (PowerShell la legge come unità/ambito e non avvia lo script)', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  const sbagliate = t.split('\n').map((r, i) => [i + 1, r]).filter(([, r]) => /\$(?!(?:env|script|global|local|using|private):)[A-Za-z_]\w*:(?![\w{\\])/.test(r));
+  assert.deepEqual(sbagliate, []);
+});
+
+test('SRT-Check.ps1: nessuna assegnazione a variabili automatiche di PowerShell', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  for (const nome of ['input', 'args', 'error', 'host', 'pid', 'home', 'matches', 'this', 'event', 'sender']) {
+    assert.ok(!new RegExp(`\\$${nome}\\s*=[^=]`, 'i').test(t), `$${nome} è una variabile automatica`);
+  }
+});
+
+test('registrazione: chiusa a pacchetti TS interi, avviso se non arriva niente, errori di scrittura non bloccano la ricezione', { skip: !presenti }, () => {
+  const ps1 = fs.readFileSync(PS1, 'utf8'), mac = fs.readFileSync(MAC, 'utf8');
+  assert.ok(/SetLength\(\w+ - \w+ % 188\)/.test(ps1), 'Windows: taglio all\'ultimo pacchetto intero');
+  assert.ok(/% 188/.test(mac) && /trap '' HUP/.test(mac), 'Mac: taglio e srt-live-transmit che ignora SIGHUP');
+  for (const t of [ps1, mac]) assert.ok(t.includes('Nothing received yet'), 'avviso dopo 10 s senza dati');
+  assert.ok(ps1.includes('ErroreRegistrazione') && ps1.includes('Recording stopped early'), 'Windows: errore di scrittura segnalato, flusso svuotato');
+});
