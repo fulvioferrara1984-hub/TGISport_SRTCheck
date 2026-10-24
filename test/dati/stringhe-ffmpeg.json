@@ -59,5 +59,17 @@
     "query": "passphrase=abcdefghij",
     "passphrase": "abcdefghiX",
     "atteso": "errore"
+  },
+  {
+    "nome": "alias-latenza",
+    "query": "latency=200000&tsbpddelay=500000"
+  },
+  {
+    "nome": "alias-pacchetto",
+    "query": "pkt_size=1316&payload_size=1316"
+  },
+  {
+    "nome": "alias-streamid",
+    "query": "streamid=uno&srt_streamid=due"
   }
 ]

@@ -128,3 +128,27 @@ test('registrazione: chiusa a pacchetti TS interi, avviso se non arriva niente, 
   for (const t of [ps1, mac]) assert.ok(t.includes('Nothing received yet'), 'avviso dopo 10 s senza dati');
   assert.ok(ps1.includes('ErroreRegistrazione') && ps1.includes('Recording stopped early'), 'Windows: errore di scrittura segnalato, flusso svuotato');
 });
+
+test('registrazione su Windows: il file nasce col primo dato e ffplay parte quando ha dati (finestra chiusa prima: nessun file vuoto)', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  const registra = t.slice(t.indexOf('public static void Registra('), t.indexOf('copia.Start()'));
+  assert.ok(registra.includes('new FileStream') && registra.indexOf('new FileStream') > registra.indexOf('ingresso.Read('), 'FileStream aperto nel thread, dopo il primo Read');
+  assert.ok(/\$recording = Get-WritablePath[^\n]*\n[\s\S]{0,500}?Remove-Item -LiteralPath \$recording/.test(t), 'il file di prova della cartella scrivibile viene tolto');
+  assert.ok(/Test-Path -LiteralPath \$recording\)[^\n]*Length -gt 0\)[^\n]*\$play = Start-Play/.test(t), 'ffplay parte quando la registrazione ha i primi dati');
+  assert.ok(/\$noData = \(-not \(Test-Path -LiteralPath \$recording\)\)/.test(t), 'avviso dei 10 s anche col file non ancora creato');
+});
+
+test('Ctrl+C su Windows: lo legge lo script (niente "Terminate batch job"), la chiusura fa il suo corso', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  assert.ok(/\[Console\]::TreatControlCAsInput = \$true/.test(t), 'Ctrl+C come tasto');
+  assert.ok(/\[Console\]::TreatControlCAsInput = \$ctrlCPrima/.test(t), 'impostazione rimessa com\'era alla fine');
+  assert.ok(t.includes('[Console]::KeyAvailable') && t.includes('[Console]::ReadKey($true)'), 'tasti letti senza bloccare');
+  assert.ok(/Test-CtrlC\)\)\s*\{\s*\$reason = 'stopped'; break/.test(t), 'Ctrl+C: motivo stopped e chiusura normale');
+});
+
+test('avviso dei 10 s in rendezvous: niente "listener mode", nei due script', { skip: !presenti }, () => {
+  for (const f of [MAC, PS1]) {
+    const t = fs.readFileSync(f, 'utf8');
+    assert.ok(t.includes('that the other side is also in rendezvous mode with this PC'), `${path.basename(f)}: consiglio per rendezvous`);
+  }
+});
