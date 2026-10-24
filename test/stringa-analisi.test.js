@@ -204,3 +204,18 @@ test('caratteri di formato invisibili (trattino morbido, segni di direzione di O
 test('host tra parentesi quadre che non è IPv6: errore', () => {
   assert.ok(codici(stringa.analizza('srt://[203.0.113.10]:9000').errori).includes('host-non-valido'));
 });
+
+test('caller verso 0.0.0.0 o ::: non è un indirizzo a cui collegarsi', () => {
+  for (const s of ['srt://0.0.0.0:9000', 'srt://[::]:9000', 'srt://0.0.0.0:9000?mode=rendezvous']) {
+    const r = stringa.analizza(s);
+    assert.ok(codici(r.errori).includes('host-non-raggiungibile'), s);
+    assert.equal(r.pronta, null, s);
+  }
+  assert.deepEqual(stringa.analizza('srt://0.0.0.0:9000?mode=listener').errori, []);
+});
+
+test('latenza negativa: errore', () => {
+  for (const nome of ['latency', 'rcvlatency', 'peerlatency']) {
+    assert.ok(codici(stringa.analizza(`srt://203.0.113.10:9000?${nome}=-5000`).errori).includes('valore-non-valido'), nome);
+  }
+});

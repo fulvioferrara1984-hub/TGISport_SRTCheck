@@ -92,10 +92,15 @@
   }
 
   // Decodifica %XX come fa FFmpeg; un % non valido resta com'è. Il + resta + (lo segnala l'avviso dedicato).
-  function decodifica(valore) {
+  // esito.rotta = true se qualche %XX non forma UTF-8 valido (quel valore poi resta scritto com'era).
+  function decodifica(valore, esito) {
     return valore.replace(/(%[0-9a-fA-F]{2})+/g, (pezzo) => {
-      try { return decodeURIComponent(pezzo); } catch (e) { return pezzo; }
+      try { return decodeURIComponent(pezzo); } catch (e) { if (esito) esito.rotta = true; return pezzo; }
     });
+  }
+
+  function etichettaDi(nome) {
+    return { passphrase: 'passphrase', smoother: 'smoother' }[nome] || 'stream ID';
   }
 
   function ultimoParametroLibero(testo) {
@@ -150,7 +155,9 @@
 
   function valida(nome, valore, errori) {
     const def = PARAMETRI[nome];
-    if (def.tipo === 'int' && !/^-?\d+$/.test(valore) && !(def.costanti || []).includes(valore)) {
+    if (['latency', 'rcvlatency', 'peerlatency'].includes(nome) && /^-\d+$/.test(valore)) {
+      errori.push(messaggio('valore-non-valido', `\`${nome}\` cannot be negative.`, nome));
+    } else if (def.tipo === 'int' && !/^-?\d+$/.test(valore) && !(def.costanti || []).includes(valore)) {
       errori.push(messaggio('valore-non-valido', `\`${nome}\` needs a whole number, not “${valore}”.`, nome));
     } else if (def.tipo === 'bool' && !/^(0|1|true|false)$/i.test(valore)) {
       errori.push(messaggio('valore-non-valido', `\`${nome}\` needs 0 or 1, not “${valore}”.`, nome));
@@ -207,7 +214,7 @@
         p.grezzo = p.grezzo.toLowerCase();
         note.push(messaggio('mode-minuscolo', 'Wrote mode in lower case, as FFmpeg expects.'));
       }
-      const etichetta = p.nome === 'passphrase' ? 'passphrase' : 'stream ID';
+      const etichetta = etichettaDi(p.nome);
       if (p.unito) {
         const a = messaggio('and-nella-passphrase', `The ${etichetta} seems to contain “&”, which FFmpeg reads as the start of a new parameter. The ready string joins it back and writes it as %26.`, p.nome);
         a.annullabile = true;
@@ -216,11 +223,22 @@
       if (LIBERI.includes(p.nome) && /\+|%(?![0-9a-fA-F]{2})|#| /.test(p.grezzo)) {
         avvisi.push(messaggio('carattere-codificato', `The ${etichetta} contains characters that FFmpeg reads differently (“+” becomes a space, “%”, “#” and spaces break it). The ready string encodes them, so it arrives exactly as typed.`, p.nome));
       }
-      p.valore = decodifica(p.grezzo);
+      const esito = {};
+      p.valore = decodifica(p.grezzo, esito);
+      if (esito.rotta && LIBERI.includes(p.nome)) {
+        p.rotta = true;
+        avvisi.push(messaggio('codifica-non-valida', `The ${etichetta} contains %-codes that are not valid text: the ready string keeps them exactly as written. Check them with whoever sent the string.`, p.nome));
+      }
       valida(p.nome, p.valore, errori);
     }
     if (maiuscole) note.push(messaggio('nome-minuscolo', 'Wrote parameter names in lower case, as FFmpeg expects.'));
-    return { parametri, spazi };
+    // parametro ripetuto: FFmpeg applica i valori in ordine, quindi vale l'ultimo
+    const ultimo = new Map();
+    parametri.forEach((p, i) => ultimo.set(p.nome, i));
+    for (const nome of new Set(parametri.filter((p, i) => ultimo.get(p.nome) !== i).map((p) => p.nome))) {
+      avvisi.push(messaggio('parametro-doppio', `\`${nome}\` appears more than once: FFmpeg uses the last value, so the ready string keeps only that one.`, nome));
+    }
+    return { parametri: parametri.filter((p, i) => ultimo.get(p.nome) === i), spazi };
   }
 
   // FFmpeg legge le latenze in microsecondi: un valore sotto 10000 (10 ms) è quasi sempre scritto in millisecondi.
@@ -245,7 +263,7 @@
     const m = /[.,;"'\u201D\u2019)\]>]+$/.exec(p.valore);
     if (!m || m.index === 0) return;
     p.valore = p.valore.slice(0, m.index);
-    const etichetta = p.nome === 'passphrase' ? 'passphrase' : 'stream ID';
+    const etichetta = etichettaDi(p.nome);
     const a = messaggio('fine-sospetta', `The ${etichetta} ended with “${m[0]}”, which is usually punctuation copied together with the string: it was removed. If it is really part of the ${etichetta}, keep the original value.`, p.nome);
     a.annullabile = true;
     avvisi.push(a);
@@ -287,7 +305,7 @@
       ...ORDINE.map((n) => parametri.find((p) => p.nome === n)).filter(Boolean),
       ...parametri.filter((p) => !ORDINE.includes(p.nome)),
     ];
-    const query = ordinati.map((p) => `${p.nome}=${LIBERI.includes(p.nome) ? codificaValore(p.valore) : p.grezzo}`).join('&');
+    const query = ordinati.map((p) => `${p.nome}=${LIBERI.includes(p.nome) && !p.rotta ? codificaValore(p.valore) : p.grezzo}`).join('&');
     return `srt://${h}:${porta}${query ? '?' + query : ''}`;
   }
 
@@ -325,6 +343,9 @@
       } else {
         errori.push(messaggio('host-mancante', 'The address of the source is missing: in caller mode this PC connects to srt://address:port.'));
       }
+    }
+    if (modalita !== 'listener' && ['0.0.0.0', '::'].includes(host)) {
+      errori.push(messaggio('host-non-raggiungibile', `${host} means “every network of this PC”: it is not an address to connect to. Use the address of the source, or mode=listener if the source calls this PC.`));
     }
     const numeroPorta = /^\d+$/.test(porta) ? Number(porta) : NaN;
     if (!(numeroPorta >= 1 && numeroPorta <= 65535)) {

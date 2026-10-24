@@ -128,3 +128,23 @@ test('la stringa pronta è stabile: rianalizzata non cambia e non ha più correz
     assert.deepEqual(dopo.note, [], c);
   }
 });
+
+test('parametro ripetuto: avviso, la stringa pronta tiene l\'ultimo come FFmpeg', () => {
+  const r = stringa.analizza(BASE + 'latency=200000&latency=500000');
+  assert.ok(codici(r.avvisi).includes('parametro-doppio'));
+  assert.equal((r.pronta.match(/latency=/g) || []).length, 1);
+  assert.ok(r.pronta.includes('latency=500000') && !r.pronta.includes('200000'), r.pronta);
+  assert.equal(r.riepilogo.latenzaMs, 500);
+});
+
+test('%XX che non formano UTF-8 valido: restano come scritti, con avviso', () => {
+  const r = stringa.analizza(BASE + 'passphrase=abc%E2%82defghij');
+  assert.ok(codici(r.avvisi).includes('codifica-non-valida'));
+  assert.ok(r.pronta.includes('passphrase=abc%E2%82defghij'), r.pronta);
+  assert.equal(stringa.analizza(r.pronta).pronta, r.pronta);
+});
+
+test('smoother: i testi dicono "smoother", non "stream ID"', () => {
+  const a = stringa.analizza(BASE + 'smoother=live+x').avvisi.find((m) => m.codice === 'carattere-codificato');
+  assert.ok(a && a.testo.includes('smoother') && !a.testo.includes('stream ID'), a && a.testo);
+});
