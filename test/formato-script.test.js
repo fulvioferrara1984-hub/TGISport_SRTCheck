@@ -157,3 +157,17 @@ test('Mac: tabella dal vivo in perl, con --stats-table e --at per le prove', { s
   const t = fs.readFileSync(MAC, 'utf8');
   for (const pezzo of ['srt-check-tabella', '--stats-table)', '--at)', '"recv":']) assert.ok(t.includes(pezzo), pezzo);
 });
+
+test('Mac: statistiche in tutte le modalità, tasto S, Watch con debug come prima', { skip: !presenti }, () => {
+  const t = fs.readFileSync(MAC, 'utf8');
+  assert.ok(/^OPZIONI_SLT=\(-s:100 -f -pf:json -statsout:"\$STATS" -a:yes\)$/m.test(t), 'statistiche sempre');
+  assert.ok(!/\[ -n "\$TEST" \] && OPZIONI_SLT=/.test(t), 'non solo nel test');
+  for (const pezzo of ['Press S for live statistics.', '--show-stats)', 'read -rsn1 -t 1']) assert.ok(t.includes(pezzo), pezzo);
+  assert.ok(/if \[ "\$LOG_LEVEL" = debug \] \|\| \[ ! -x "\$SLT" \]; then[\s\S]{0,400}"\$FFPLAY" "\$\{FINESTRA\[@\]\}" -loglevel "\$LOG_LEVEL" "\$SRT_URL"/.test(t),
+    'il vecchio Watch solo con il log dettagliato o senza srt-live-transmit');
+});
+
+test('guida: Live statistics', { skip: !presenti }, () => {
+  const t = fs.readFileSync(path.join(SORGENTE, 'guida.html'), 'utf8');
+  assert.ok(t.includes('Live statistics') && t.includes('Dropped (too late)'));
+});
