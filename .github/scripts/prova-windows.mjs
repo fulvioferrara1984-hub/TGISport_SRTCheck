@@ -3,6 +3,7 @@
 //      node .github/scripts/prova-windows.mjs report <cartella dei report> <giudizio atteso>
 //      node .github/scripts/prova-windows.mjs registrazione <cartella> <secondi> <codec,codec,...> <ffprobe.exe>
 //      node .github/scripts/prova-windows.mjs tabella <cartella "SRT Check">   (stessi dati sintetici del Mac)
+//      node .github/scripts/prova-windows.mjs uscita <file> <condizione JS su t>  (ultima tabella stampata con -ShowStats)
 import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -99,8 +100,14 @@ if (azione === 'conversione') {
     esito(diff.length === 0, `${d.nome} (${durata} ms)${diff.length ? '\n    ' + diff.join('\n    ') + '\n' + r.stdout : ''}`);
     if (d.nome === 'lunga') esito(durata < 10000, `lunga sotto 10 s (${durata} ms)`);
   }
+} else if (azione === 'uscita') {
+  // ultima tabella stampata da -ShowStats con l'uscita rediretta; numero() toglie gli spazi delle migliaia
+  const { leggiTabella, numero } = require(join(radice, 'test', 'aiuto-statistiche.js'));
+  const t = leggiTabella(readFileSync(cartella, 'utf8'));
+  console.log(JSON.stringify({ stato: t.stato, righe: t.righe, storico: t.storico }));
+  esito(new Function('t', 'numero', `return (${atteso})`)(t, numero) === true, `condizione: ${atteso}`);
 } else {
-  console.error('Uso: prova-windows.mjs conversione <cartella> | report <cartella> <giudizio> | registrazione <cartella> <secondi> <codec> <ffprobe> | tabella <cartella>');
+  console.error('Uso: prova-windows.mjs conversione <cartella> | report <cartella> <giudizio> | registrazione <cartella> <secondi> <codec> <ffprobe> | tabella <cartella> | uscita <file> <condizione>');
   process.exit(2);
 }
 process.exit(falliti ? 1 : 0);

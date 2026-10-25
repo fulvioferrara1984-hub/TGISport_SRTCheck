@@ -143,7 +143,7 @@ test('Ctrl+C su Windows: lo legge lo script (niente "Terminate batch job"), la c
   assert.ok(/\[Console\]::TreatControlCAsInput = \$true/.test(t), 'Ctrl+C come tasto');
   assert.ok(/\[Console\]::TreatControlCAsInput = \$ctrlCPrima/.test(t), 'impostazione rimessa com\'era alla fine');
   assert.ok(t.includes('[Console]::KeyAvailable') && t.includes('[Console]::ReadKey($true)'), 'tasti letti senza bloccare');
-  assert.ok(/Test-CtrlC\)\)\s*\{\s*\$reason = 'stopped'; break/.test(t), 'Ctrl+C: motivo stopped e chiusura normale');
+  assert.ok(/\$tasto -eq 'ctrlc'\)\s*\{\s*\$reason = 'stopped'; break/.test(t), 'Ctrl+C: motivo stopped e chiusura normale');
 });
 
 test('avviso dei 10 s in rendezvous: niente "listener mode", nei due script', { skip: !presenti }, () => {
@@ -180,4 +180,16 @@ test('Windows: classe Tabella e -StatsTable, prima della ricerca di FFmpeg; prov
   const w = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'windows.yml'), 'utf8');
   const passo = w.indexOf('prova-windows.mjs tabella');
   assert.ok(passo > w.indexOf('Conversione della stringa') && passo < w.indexOf('Primo avvio'), 'passo della tabella dopo la conversione');
+});
+
+test('Windows: statistiche in tutte le modalità, tasto S, Watch con debug come prima; prove sul workflow', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  const opzioni = t.split('\n').filter((r) => /^\s*\$sltOptions = /.test(r)).map((r) => r.trim());
+  assert.deepEqual(opzioni, [`$sltOptions = '-s:100 -f -pf:json "-statsout:' + $statsFile + '" -a:yes'`], 'statistiche sempre');
+  for (const pezzo of ['Press S for live statistics.', '[SrtCheck]::Osserva(', '[ConsoleKey]::S', 'function Show-Table', 'function Write-Msg']) assert.ok(t.includes(pezzo), pezzo);
+  assert.ok(/if \(\$logLevel -eq 'debug' -or -not \$hasSlt\) \{[\s\S]{0,500}& \$ffplayExe -x 960 -y 540 -window_title \$windowTitle -loglevel \$logLevel \$srtUrl/.test(t),
+    'il vecchio Watch solo con il log dettagliato o senza srt-live-transmit');
+  const w = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'windows.yml'), 'utf8');
+  for (const passo of ['Watch con statistiche (passa da srt-live-transmit, nessun orfano)', 'Statistiche con perdita simulata']) assert.ok(w.includes(passo), passo);
+  assert.ok(w.includes('.github/scripts/rete-simulata.mjs') && w.includes('prova-windows.mjs uscita'));
 });

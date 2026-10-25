@@ -247,3 +247,38 @@ jobs:
           $orfani = @(Get-Process srt-live-transmit -ErrorAction SilentlyContinue)
           if ($orfani.Count -gt 0) { throw "srt-live-transmit e' rimasto acceso dopo la chiusura" }
           if (@(Get-ChildItem $vuota -Force).Count -gt 0) { throw ("finestra chiusa prima dei dati, file lasciati: " + ((Get-ChildItem $vuota -Force).Name -join ', ')) }
+
+      - name: Watch con statistiche (passa da srt-live-transmit, nessun orfano)
+        shell: pwsh
+        run: |
+          $ff = "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffmpeg.exe"
+          $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -ArgumentList '-nostdin -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=1280x720:rate=25 -f lavfi -i sine=f=440 -t 60 -map 0 -map 1 -c:v libx264 -preset veryfast -b:v 4M -g 50 -c:a aac -f mpegts -mode listener -listen_timeout 20000000 srt://127.0.0.1:23008'
+          Start-Sleep 3
+          $uscita = & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1" -Url "srt://127.0.0.1:23008?latency=200000" -Action Watch -Seconds 12 -NoVideo -ShowStats 2>&1 | Out-String
+          $uscita | Set-Content -Encoding utf8 "$env:RUNNER_TEMP\watch-statistiche.txt"
+          Get-Content "$env:RUNNER_TEMP\watch-statistiche.txt" -Tail 24
+          Stop-Process -Id $fonte.Id -ErrorAction SilentlyContinue
+          Start-Sleep 2
+          $orfani = @(Get-Process srt-live-transmit -ErrorAction SilentlyContinue)
+          if ($orfani.Count -gt 0) { throw "srt-live-transmit e' rimasto acceso" }
+          if (-not $uscita.Contains('SRT Check - live statistics')) { throw "manca la tabella" }
+          node .github/scripts/prova-windows.mjs uscita "$env:RUNNER_TEMP\watch-statistiche.txt" "t.stato === 'OK: no losses' && numero(t.righe['Packets received'][1]) > 0"
+
+      - name: Statistiche con perdita simulata (persi recuperati, nessuno scartato)
+        shell: pwsh
+        run: |
+          $ff = "$env:LOCALAPPDATA\SRT_TGI_Tools\ffmpeg\bin\ffmpeg.exe"
+          $slt = "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\bin\srt-live-transmit.exe"
+          # come strumenti/scenari.sh: FFmpeg -> UDP -> srt-live-transmit listener -> rete che perde il 3% -> SRT Check
+          $ricevitore = Start-Process $slt -PassThru -WindowStyle Hidden -ArgumentList '-a:yes "udp://127.0.0.1:23031" "srt://0.0.0.0:23032?mode=listener&latency=200"'
+          $rete = Start-Process node -PassThru -WindowStyle Hidden -ArgumentList '.github/scripts/rete-simulata.mjs --ascolta 23033 --verso 127.0.0.1:23032 --perdita 3 --ritardo 10'
+          $fonte = Start-Process $ff -PassThru -WindowStyle Hidden -ArgumentList '-nostdin -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=640x360:rate=25 -t 60 -c:v mpeg2video -b:v 4M -minrate 4M -maxrate 4M -bufsize 1M -f mpegts udp://127.0.0.1:23031?pkt_size=1316'
+          Start-Sleep 2
+          $uscita = & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1" -Url "srt://127.0.0.1:23033?latency=200000" -Action Watch -Seconds 15 -NoVideo -ShowStats 2>&1 | Out-String
+          $uscita | Set-Content -Encoding utf8 "$env:RUNNER_TEMP\perdita-statistiche.txt"
+          Get-Content "$env:RUNNER_TEMP\perdita-statistiche.txt" -Tail 24
+          Stop-Process -Id $fonte.Id, $rete.Id, $ricevitore.Id -ErrorAction SilentlyContinue
+          Start-Sleep 2
+          $orfani = @(Get-Process srt-live-transmit -ErrorAction SilentlyContinue)
+          if ($orfani.Count -gt 0) { throw "srt-live-transmit e' rimasto acceso" }
+          node .github/scripts/prova-windows.mjs uscita "$env:RUNNER_TEMP\perdita-statistiche.txt" "numero(t.righe.Lost[1]) > 0 && numero(t.righe['Dropped (too late)'][1]) === 0 && t.stato.startsWith('Losses recovered')"
