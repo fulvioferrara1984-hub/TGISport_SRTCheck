@@ -1,0 +1,329 @@
+[
+  {
+    "nome": "pulito",
+    "segmenti": [
+      {
+        "sid": 101,
+        "da": 0,
+        "a": 20,
+        "passo": 0.25,
+        "pacchetti": 95
+      }
+    ],
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "0",
+        "0"
+      ],
+      "ritrasmessi": [
+        "0",
+        "0"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "00:00:19",
+      "bitrate": [
+        "4.0",
+        "4.0"
+      ],
+      "ricevuti": [
+        "3 800",
+        "7 600"
+      ],
+      "storico": "                                        ....................",
+      "stato": "OK: no losses"
+    }
+  },
+  {
+    "nome": "recuperate",
+    "segmenti": [
+      {
+        "sid": 101,
+        "da": 0,
+        "a": 20,
+        "passo": 0.25,
+        "pacchetti": 95,
+        "eventi": {
+          "5": {
+            "persi": 3,
+            "ritrasmessi": 3
+          },
+          "12": {
+            "persi": 15,
+            "ritrasmessi": 16
+          },
+          "17": {
+            "persi": 120,
+            "ritrasmessi": 125
+          }
+        }
+      }
+    ],
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "135",
+        "138"
+      ],
+      "ritrasmessi": [
+        "141",
+        "144"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "00:00:19",
+      "bitrate": [
+        "4.0",
+        "4.0"
+      ],
+      "ricevuti": [
+        "3 800",
+        "7 600"
+      ],
+      "storico": "                                        .....-......=....#..",
+      "stato": "Losses recovered: retransmission is keeping up"
+    }
+  },
+  {
+    "nome": "scartati",
+    "segmenti": [
+      {
+        "sid": 101,
+        "da": 0,
+        "a": 20,
+        "passo": 0.25,
+        "pacchetti": 95,
+        "eventi": {
+          "8": {
+            "persi": 4,
+            "ritrasmessi": 4
+          },
+          "14": {
+            "persi": 10,
+            "ritrasmessi": 7,
+            "scartati": 3
+          }
+        }
+      }
+    ],
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "10",
+        "14"
+      ],
+      "ritrasmessi": [
+        "7",
+        "11"
+      ],
+      "scartati": [
+        "3",
+        "3"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "Last dropped packets: 09:00:14 (3)",
+      "connesso": "00:00:19",
+      "bitrate": [
+        "4.0",
+        "4.0"
+      ],
+      "ricevuti": [
+        "3 800",
+        "7 600"
+      ],
+      "storico": "                                        ........-.....X.....",
+      "stato": "Packets dropped: visible glitches likely"
+    }
+  },
+  {
+    "nome": "riconnessione",
+    "segmenti": [
+      {
+        "sid": 201,
+        "da": 0,
+        "a": 8,
+        "passo": 0.25,
+        "pacchetti": 95
+      },
+      {
+        "sid": 202,
+        "da": 11,
+        "a": 20,
+        "passo": 0.25,
+        "pacchetti": 95
+      }
+    ],
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "0",
+        "0"
+      ],
+      "ritrasmessi": [
+        "0",
+        "0"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "1",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "00:00:08",
+      "bitrate": [
+        "3.6",
+        "3.4"
+      ],
+      "ricevuti": [
+        "3 420",
+        "6 460"
+      ],
+      "storico": "                                        .......... .........",
+      "stato": "OK: no losses"
+    }
+  },
+  {
+    "nome": "ferma",
+    "segmenti": [
+      {
+        "sid": 301,
+        "da": 0,
+        "a": 10,
+        "passo": 0.25,
+        "pacchetti": 95
+      }
+    ],
+    "at": "2026-10-25T09:00:17.500000+0100",
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "0",
+        "0"
+      ],
+      "ritrasmessi": [
+        "0",
+        "0"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "00:00:17",
+      "bitrate": [
+        "0.8",
+        "2.2"
+      ],
+      "ricevuti": [
+        "760",
+        "3 800"
+      ],
+      "storico": "                                          ............      ",
+      "stato": "No data for 7 s"
+    }
+  },
+  {
+    "nome": "basso",
+    "segmenti": [
+      {
+        "sid": 401,
+        "da": 0,
+        "a": 20,
+        "passo": 2,
+        "pacchetti": 100
+      }
+    ],
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "0",
+        "0"
+      ],
+      "ritrasmessi": [
+        "0",
+        "0"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "00:00:18",
+      "bitrate": [
+        "0.5",
+        "0.6"
+      ],
+      "ricevuti": [
+        "500",
+        "1 000"
+      ],
+      "storico": "                                         ...................",
+      "stato": "OK: no losses"
+    }
+  },
+  {
+    "nome": "lunga",
+    "segmenti": [
+      {
+        "sid": 501,
+        "da": 0,
+        "a": 7200,
+        "passo": 1,
+        "pacchetti": 380
+      }
+    ],
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "0",
+        "0"
+      ],
+      "ritrasmessi": [
+        "0",
+        "0"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "01:59:59",
+      "bitrate": [
+        "4.0",
+        "4.0"
+      ],
+      "ricevuti": [
+        "3 800",
+        "2 736 000"
+      ],
+      "storico": "............................................................",
+      "stato": "OK: no losses"
+    }
+  }
+]
