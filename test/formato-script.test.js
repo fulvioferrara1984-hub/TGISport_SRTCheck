@@ -152,3 +152,8 @@ test('avviso dei 10 s in rendezvous: niente "listener mode", nei due script', { 
     assert.ok(t.includes('that the other side is also in rendezvous mode with this PC'), `${path.basename(f)}: consiglio per rendezvous`);
   }
 });
+
+test('Mac: tabella dal vivo in perl, con --stats-table e --at per le prove', { skip: !presenti }, () => {
+  const t = fs.readFileSync(MAC, 'utf8');
+  for (const pezzo of ['srt-check-tabella', '--stats-table)', '--at)', '"recv":']) assert.ok(t.includes(pezzo), pezzo);
+});
