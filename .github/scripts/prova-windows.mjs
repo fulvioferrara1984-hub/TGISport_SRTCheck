@@ -2,7 +2,9 @@
 // Uso: node .github/scripts/prova-windows.mjs conversione <cartella "SRT Check">
 //      node .github/scripts/prova-windows.mjs report <cartella dei report> <giudizio atteso>
 //      node .github/scripts/prova-windows.mjs registrazione <cartella> <secondi> <codec,codec,...> <ffprobe.exe>
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+//      node .github/scripts/prova-windows.mjs tabella <cartella "SRT Check">   (stessi dati sintetici del Mac)
+import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,8 +83,24 @@ if (azione === 'conversione') {
     console.log(JSON.stringify({ file: file[0], codec, byte }));
     esito(byte > 0 && codec === codecAttesi, `leggibile: ${codec}, ${byte} byte`);
   }
+} else if (azione === 'tabella') {
+  // tabella delle statistiche: stessi file sintetici e stessi numeri attesi del test node sul Mac
+  const { genera, leggiTabella, confronta } = require(join(radice, 'test', 'aiuto-statistiche.js'));
+  const dati = JSON.parse(readFileSync(join(radice, 'test', 'dati', 'statistiche.json'), 'utf8'));
+  const ps1 = join(cartella, 'SRT-Check.ps1');
+  const lavoro = mkdtempSync(join(tmpdir(), 'tabella-'));
+  for (const d of dati) {
+    const file = join(lavoro, d.nome + '.jsonl');
+    writeFileSync(file, genera(d.segmenti));
+    const inizio = Date.now();
+    const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1, '-StatsTable', file].concat(d.at ? ['-At', d.at] : []), { encoding: 'utf8' });
+    const durata = Date.now() - inizio;
+    const diff = r.status === 0 ? confronta(leggiTabella(r.stdout), d.atteso) : [`uscita ${r.status}: ${r.stderr}`];
+    esito(diff.length === 0, `${d.nome} (${durata} ms)${diff.length ? '\n    ' + diff.join('\n    ') + '\n' + r.stdout : ''}`);
+    if (d.nome === 'lunga') esito(durata < 10000, `lunga sotto 10 s (${durata} ms)`);
+  }
 } else {
-  console.error('Uso: prova-windows.mjs conversione <cartella> | report <cartella> <giudizio> | registrazione <cartella> <secondi> <codec> <ffprobe>');
+  console.error('Uso: prova-windows.mjs conversione <cartella> | report <cartella> <giudizio> | registrazione <cartella> <secondi> <codec> <ffprobe> | tabella <cartella>');
   process.exit(2);
 }
 process.exit(falliti ? 1 : 0);

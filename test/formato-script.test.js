@@ -171,3 +171,13 @@ test('guida: Live statistics', { skip: !presenti }, () => {
   const t = fs.readFileSync(path.join(SORGENTE, 'guida.html'), 'utf8');
   assert.ok(t.includes('Live statistics') && t.includes('Dropped (too late)'));
 });
+
+test('Windows: classe Tabella e -StatsTable, prima della ricerca di FFmpeg; prova sul workflow', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  for (const pezzo of ['public static class Tabella', 'public static string[] Righe(', '[string]$StatsTable', '[string]$At', '[switch]$ShowStats']) assert.ok(t.includes(pezzo), pezzo);
+  assert.ok(t.indexOf('Add-Type -TypeDefinition') < t.indexOf("# 1. C'e' gia' un ffmpeg"), 'il componente C# serve gia\' a -StatsTable, prima di FFmpeg');
+  assert.ok(t.indexOf("ContainsKey('StatsTable')") > t.indexOf('Add-Type -TypeDefinition'), '-StatsTable dopo Add-Type');
+  const w = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'windows.yml'), 'utf8');
+  const passo = w.indexOf('prova-windows.mjs tabella');
+  assert.ok(passo > w.indexOf('Conversione della stringa') && passo < w.indexOf('Primo avvio'), 'passo della tabella dopo la conversione');
+});

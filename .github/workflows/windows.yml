@@ -97,6 +97,10 @@ jobs:
         shell: pwsh # regia in PowerShell 7; lo script si prova con Windows PowerShell 5.1 (powershell -File)
         run: node .github/scripts/prova-windows.mjs conversione "$env:RUNNER_TEMP\Cartella con spazi\SRT Check"
 
+      - name: Tabella delle statistiche (stessi file sintetici del Mac)
+        shell: pwsh
+        run: node .github/scripts/prova-windows.mjs tabella "$env:RUNNER_TEMP\Cartella con spazi\SRT Check"
+
       - name: Primo avvio (scarica FFmpeg da gyan.dev come sul PC di un operatore)
         shell: pwsh # regia in PowerShell 7; lo script si prova con Windows PowerShell 5.1 (powershell -File)
         run: |
