@@ -15,7 +15,7 @@ const [hostVerso, portaVerso] = opzioni.verso.split(':');
 const perdita = Number(opzioni.perdita), ritardo = Number(opzioni.ritardo), variazione = Number(opzioni.variazione);
 const [pausaDa, pausaPer] = opzioni.pausa ? opzioni.pausa.split(':').map(Number) : [null, null];
 const avvio = Date.now();
-const conteggio = { inoltrati: 0, persi: 0, pausa: 0 };
+const conteggio = { inoltrati: 0, persi: 0, pausa: 0, ritorno: 0, errori: 0 };
 
 function inPausa() {
   if (pausaDa === null) return false;
@@ -41,13 +41,19 @@ versoClient.on('message', (m, info) => {
   inoltra(versoServer, m, Number(portaVerso), hostVerso);
 });
 versoServer.on('message', (m) => {
+  conteggio.ritorno++;
   if (client) inoltra(versoClient, m, client.port, client.address);
 });
+// Su Windows un pacchetto verso una porta ancora chiusa torna come errore (ECONNRESET) sul socket: si conta e si
+// va avanti, invece di chiudere la rete simulata.
+for (const s of [versoClient, versoServer]) s.on('error', (e) => { conteggio.errori++; console.log(`errore del socket: ${e.code || e.message}`); });
 versoClient.bind(Number(opzioni.ascolta), '127.0.0.1', () => {
   console.log(`rete simulata: 127.0.0.1:${opzioni.ascolta} → ${opzioni.verso}, perdita ${perdita}%, ritardo ${ritardo}±${variazione} ms` + (pausaDa !== null ? `, pausa da ${pausaDa}s per ${pausaPer}s` : ''));
 });
 versoServer.bind(0, '127.0.0.1');
 
-const fine = () => { console.log(`inoltrati ${conteggio.inoltrati}, persi ${conteggio.persi}, scartati in pausa ${conteggio.pausa}`); process.exit(0); };
+const riepilogo = () => `inoltrati ${conteggio.inoltrati}, persi ${conteggio.persi}, scartati in pausa ${conteggio.pausa} (dal server ${conteggio.ritorno}, errori ${conteggio.errori})`;
+const fine = () => { console.log(riepilogo()); process.exit(0); };
+setInterval(() => console.log(riepilogo()), 5000).unref();
 process.on('SIGTERM', fine);
 process.on('SIGINT', fine);
