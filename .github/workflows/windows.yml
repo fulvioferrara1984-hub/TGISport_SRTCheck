@@ -236,9 +236,17 @@ jobs:
         run: |
           $vuota = "$env:RUNNER_TEMP\senza-dati"
           New-Item -ItemType Directory $vuota | Out-Null
+          # cartelle di lavoro rimaste da sessioni chiuse di colpo: via quelle di piu' di un giorno, le altre restano
+          $vecchia = Join-Path $env:TEMP 'srt-check-vecchia-prova'; $recente = Join-Path $env:TEMP 'srt-check-recente-prova'
+          New-Item -ItemType Directory $vecchia, $recente | Out-Null
+          Set-Content -LiteralPath (Join-Path $vecchia 'stats.jsonl') -Value 'x'
+          (Get-Item -LiteralPath $vecchia).LastWriteTime = (Get-Date).AddDays(-2)
           $uscita = & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1" -Url "srt://127.0.0.1:23999?latency=200000" -Action Record -Seconds 14 -NoVideo -ReportDir $vuota 2>&1 | Out-String
           Write-Host $uscita
           foreach ($testo in @('Nothing received yet after 10 seconds', 'Nothing was recorded')) { if (-not $uscita.Contains($testo)) { throw "manca: $testo" } }
+          if (Test-Path -LiteralPath $vecchia) { throw "cartella di lavoro vecchia non tolta" }
+          if (-not (Test-Path -LiteralPath $recente)) { throw "cartella di lavoro recente tolta" }
+          Remove-Item -LiteralPath $recente -Recurse -Force
           if (@(Get-ChildItem $vuota -Force).Count -gt 0) { throw ("file lasciati: " + ((Get-ChildItem $vuota -Force).Name -join ', ')) }
           $script = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$env:RUNNER_TEMP\Cartella con spazi\SRT Check\SRT-Check.ps1`"", '-Url', '"srt://127.0.0.1:23999?latency=200000"', '-Action', 'Record', '-Seconds', '60', '-NoVideo', '-ReportDir', "`"$vuota`"")
           Start-Sleep 6

@@ -193,3 +193,25 @@ test('Windows: statistiche in tutte le modalità, tasto S, Watch con debug come 
   for (const passo of ['Watch con statistiche (passa da srt-live-transmit, nessun orfano)', 'Statistiche con perdita simulata']) assert.ok(w.includes(passo), passo);
   assert.ok(w.includes('.github/scripts/rete-simulata.mjs') && w.includes('prova-windows.mjs uscita'));
 });
+
+test('Windows: QuickEdit spento durante la ricezione (un click nella console non blocca la tabella), rimesso alla fine', { skip: !presenti }, () => {
+  const t = fs.readFileSync(PS1, 'utf8');
+  for (const pezzo of ['SetConsoleMode', 'GetConsoleMode', '0x40', '[SrtCheck]::SpegniSelezione()', '[SrtCheck]::RimettiSelezione()']) assert.ok(t.includes(pezzo), pezzo);
+  assert.ok(t.indexOf('[SrtCheck]::RimettiSelezione()') > t.indexOf('} finally {'), 'rimesso nel finally');
+  assert.ok(t.indexOf('[SrtCheck]::SpegniSelezione()') < t.indexOf('[Console]::TreatControlCAsInput = $true'), 'modo salvato prima di Ctrl+C come tasto');
+});
+
+test('cartelle di lavoro rimaste da sessioni chiuse di colpo: tolte dopo un giorno, nei due script', { skip: !presenti }, () => {
+  const mac = fs.readFileSync(MAC, 'utf8'), ps1 = fs.readFileSync(PS1, 'utf8');
+  assert.ok(/find "\$\{TMPDIR:-\/tmp\}" -maxdepth 1 -type d -name 'srt-check\.\*' -mmin \+1440/.test(mac), 'Mac');
+  assert.ok(ps1.includes("-Filter 'srt-check-*'") && ps1.includes('.AddDays(-1)'), 'Windows');
+  const w = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'windows.yml'), 'utf8');
+  assert.ok(w.includes('srt-check-vecchia-prova'), 'prova sul workflow');
+});
+
+test('Watch: Ctrl+C non promette di salvare niente (nulla viene salvato)', { skip: !presenti }, () => {
+  const mac = fs.readFileSync(MAC, 'utf8'), ps1 = fs.readFileSync(PS1, 'utf8');
+  for (const t of [mac, ps1]) assert.ok(t.includes('Press Ctrl+C to stop.'));
+  assert.ok(/\[ -n "\$TEST" \] \|\| \[ -n "\$REC" \][^\n]*saved anyway/.test(mac), 'Mac: "saved anyway" solo con test o registrazione');
+  assert.ok(/if \(\$isTest -or \$recording\)[^\n]*saved anyway/.test(ps1), 'Windows: "saved anyway" solo con test o registrazione');
+});
