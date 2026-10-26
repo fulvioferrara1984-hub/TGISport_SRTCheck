@@ -188,11 +188,11 @@
       "ultimoScarto": "No dropped packets so far",
       "connesso": "00:00:08",
       "bitrate": [
-        "3.6",
+        "3.2",
         "3.4"
       ],
       "ricevuti": [
-        "3 420",
+        "3 040",
         "6 460"
       ],
       "storico": "                                        .......... .........",
@@ -229,13 +229,13 @@
       ],
       "riconnessioni": "0",
       "ultimoScarto": "No dropped packets so far",
-      "connesso": "00:00:17",
+      "connesso": "00:00:09",
       "bitrate": [
-        "0.8",
+        "1.2",
         "2.2"
       ],
       "ricevuti": [
-        "760",
+        "1 140",
         "3 800"
       ],
       "storico": "                                          ............      ",
@@ -324,6 +324,134 @@
       ],
       "storico": "............................................................",
       "stato": "OK: no losses"
+    }
+  },
+  {
+    "nome": "parziale",
+    "segmenti": [
+      {
+        "sid": 601,
+        "da": 0,
+        "a": 20.5,
+        "passo": 0.25,
+        "pacchetti": 95
+      }
+    ],
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "0",
+        "0"
+      ],
+      "ritrasmessi": [
+        "0",
+        "0"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "00:00:20",
+      "bitrate": [
+        "4.0",
+        "3.9"
+      ],
+      "ricevuti": [
+        "3 800",
+        "7 790"
+      ],
+      "storico": "                                       .....................",
+      "stato": "OK: no losses"
+    }
+  },
+  {
+    "nome": "audio",
+    "segmenti": [
+      {
+        "sid": 701,
+        "da": 0,
+        "a": 40,
+        "passo": 4,
+        "pacchetti": 100
+      }
+    ],
+    "at": "2026-10-25T09:00:39.500000+0100",
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "0",
+        "0"
+      ],
+      "ritrasmessi": [
+        "0",
+        "0"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "00:00:36",
+      "bitrate": [
+        "0.2",
+        "0.3"
+      ],
+      "ricevuti": [
+        "200",
+        "1 000"
+      ],
+      "storico": "                    ........................................",
+      "stato": "OK: no losses"
+    }
+  },
+  {
+    "nome": "audio-ferma",
+    "segmenti": [
+      {
+        "sid": 701,
+        "da": 0,
+        "a": 40,
+        "passo": 4,
+        "pacchetti": 100
+      }
+    ],
+    "at": "2026-10-25T09:00:47.000000+0100",
+    "atteso": {
+      "latenza": "200",
+      "rtt": "4.3",
+      "buffer": "198",
+      "persi": [
+        "0",
+        "0"
+      ],
+      "ritrasmessi": [
+        "0",
+        "0"
+      ],
+      "scartati": [
+        "0",
+        "0"
+      ],
+      "riconnessioni": "0",
+      "ultimoScarto": "No dropped packets so far",
+      "connesso": "00:00:36",
+      "bitrate": [
+        "0.0",
+        "0.2"
+      ],
+      "ricevuti": [
+        "0",
+        "1 000"
+      ],
+      "storico": "            ..............................................  ",
+      "stato": "No data for 11 s"
     }
   }
 ]
