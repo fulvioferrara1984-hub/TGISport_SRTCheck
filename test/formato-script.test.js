@@ -215,3 +215,10 @@ test('Watch: Ctrl+C non promette di salvare niente (nulla viene salvato)', { ski
   assert.ok(/\[ -n "\$TEST" \] \|\| \[ -n "\$REC" \][^\n]*saved anyway/.test(mac), 'Mac: "saved anyway" solo con test o registrazione');
   assert.ok(/if \(\$isTest -or \$recording\)[^\n]*saved anyway/.test(ps1), 'Windows: "saved anyway" solo con test o registrazione');
 });
+
+test('tabella dal vivo: avviso se il lettore si ferma (Mac), schermo pulito quando la finestra cambia dimensione (Windows)', { skip: !presenti }, () => {
+  const mac = fs.readFileSync(MAC, 'utf8'), ps1 = fs.readFileSync(PS1, 'utf8');
+  assert.ok(mac.includes('Live statistics unavailable') && /kill -0 "\$PID_TABELLA"/.test(mac), 'Mac: lettore fermo o tabella vecchia');
+  assert.ok(/eval \{[^}]*timegm/.test(mac), 'Mac: data impossibile senza fermare il lettore');
+  assert.ok(ps1.includes('[Console]::WindowHeight') && /\$script:dimensione/.test(ps1), 'Windows: ridisegno pulito al cambio di dimensione');
+});

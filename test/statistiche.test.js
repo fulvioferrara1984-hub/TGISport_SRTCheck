@@ -87,3 +87,18 @@ test('Mac: stessi numeri attesi per ogni file sintetico', { skip: !fs.existsSync
     fs.rmSync(cartella, { recursive: true, force: true });
   }
 });
+
+test('Mac: una data impossibile nel timepoint non ferma il lettore (vale l\'ora di lettura, come su Windows)', { skip: !fs.existsSync(MAC) }, () => {
+  const cartella = fs.mkdtempSync(path.join(os.tmpdir(), 'srt-check-tabella-'));
+  try {
+    const righe = genera(caso('pulito').segmenti).trim().split('\n');
+    righe.splice(40, 0, righe[40].replace(/"timepoint":"[^"]*"/, '"timepoint":"2026-02-30T09:00:10.000000+0100"'));
+    const file = path.join(cartella, 'data.jsonl');
+    fs.writeFileSync(file, righe.join('\n') + '\n');
+    const r = spawnSync('bash', [MAC, '--stats-table', file], { encoding: 'utf8', timeout: 30000 });
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(leggiTabella(r.stdout).connesso, r.stdout);
+  } finally {
+    fs.rmSync(cartella, { recursive: true, force: true });
+  }
+});
